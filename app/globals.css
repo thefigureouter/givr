@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #F7F5F0;
+  --sf: #FFFFFF;
+  --sf2: #F2F0EA;
+  --br: #E8E4DA;
+  --br2: #D8D4CA;
+  --green: #18B85A;
+  --gl: #E6F9EE;
+  --gm: #A8E6BC;
+  --gd: #0F8A40;
+  --amber: #F5A623;
+  --al: #FEF4E6;
+  --coral: #F05656;
+  --cl: #FEF0F0;
+  --blue: #4A7CF5;
+  --bl: #EEF2FF;
+  --tx: #1C1C1E;
+  --tx2: #6B6B72;
+  --tx3: #ADADB8;
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: var(--font-figtree, system-ui, sans-serif);
+    background: var(--bg);
+    color: var(--tx);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+
+  input, textarea {
+    font-family: inherit;
+  }
+}
+
+@keyframes rip {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.12); }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.05); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes su {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.card {
+  background: var(--sf);
+  border: 1.5px solid var(--br);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.card-green {
+  background: var(--gl);
+  border: 1.5px solid var(--gm);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.card-amber {
+  background: var(--al);
+  border: 1.5px solid #F5D6A0;
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pg { background: var(--gl); color: var(--gd); }
+.pa { background: var(--al); color: #CC7A10; }
+.pc { background: var(--cl); color: #C03838; }
+.pb { background: var(--bl); color: #2A5CD0; }
+.pgr { background: var(--sf2); color: var(--tx2); border: 1px solid var(--br); }
+
+.section-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--tx3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
+.tap-scale:active {
+  transform: scale(0.97);
+  transition: transform 80ms ease-out;
+}
+
+.page-enter {
+  animation: slideUp 200ms ease-out both;
+}

@@ -1,0 +1,191 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Settings } from 'lucide-react';
+import Link from 'next/link';
+import QuickGive from '@/components/home/QuickGive';
+import StreakSection from '@/components/gamification/StreakSection';
+import CharityCard from '@/components/charity/CharityCard';
+import CharitySearchModal from '@/components/charity/CharitySearchModal';
+import { CHARITIES, SAMPLE_STREAK } from '@/lib/mock-data';
+import { createDonation, getStreak, updateStreak, getDonations, awardBadges } from '@/lib/mock-db';
+import { calculateStreak } from '@/lib/streak-engine';
+import { checkForNewBadges } from '@/lib/badge-engine';
+import { totalCents, uniqueCharityIds } from '@/lib/utils';
+import type { Charity, BadgeType } from '@/types';
+import { randomId } from '@/lib/utils';
+
+const FEATURED = [CHARITIES[0], CHARITIES[5]]; // Feeding America, Doctors Without Borders
+
+export default function HomePage() {
+  const [activeCharity, setActiveCharity] = useState<Charity>(CHARITIES[0]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [streak, setStreak] = useState(SAMPLE_STREAK.currentStreak);
+  const [given, setGiven] = useState(0);
+  const [causeCount, setCauseCount] = useState(0);
+  const [newBadges, setNewBadges] = useState<BadgeType[]>([]);
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? 'Good morning 👋' : hour < 18 ? 'Good afternoon 👋' : 'Good evening 👋';
+
+  useEffect(() => {
+    async function load() {
+      const [streakData, donations] = await Promise.all([
+        getStreak('demo-user-id'),
+        getDonations('demo-user-id'),
+      ]);
+      if (streakData) setStreak(streakData.currentStreak);
+      setGiven(totalCents(donations));
+      setCauseCount(uniqueCharityIds(donations).length);
+    }
+    load();
+  }, []);
+
+  async function handleDonate(amount: string, amountCents: number) {
+    // Create donation record
+    await createDonation({
+      userId: 'demo-user-id',
+      charityId: activeCharity.id,
+      amountCents,
+      tipCents: 0,
+      feeCents: 0,
+      totalCents: amountCents,
+      charityReceivesCents: amountCents,
+      currency: 'usd',
+      status: 'SUCCEEDED',
+      privacyMode: 'PUBLIC',
+      fundingSource: 'quick-give',
+      stripePaymentIntentId: 'pi_mock_' + randomId(),
+      donatedAt: new Date().toISOString(),
+    });
+
+    // Update streak
+    const streakData = await getStreak('demo-user-id');
+    const { newStreak } = calculateStreak(
+      streakData?.lastDonationDate ?? null,
+      streakData?.currentStreak ?? 0
+    );
+    await updateStreak('demo-user-id', newStreak, streakData?.longestStreak ?? 0, new Date());
+    setStreak(newStreak);
+
+    // Refresh totals
+    const donations = await getDonations('demo-user-id');
+    const newTotal = totalCents(donations);
+    const newCauses = uniqueCharityIds(donations).length;
+    setGiven(newTotal);
+    setCauseCount(newCauses);
+
+    // Check badges
+    const badges = checkForNewBadges(donations, newStreak, []);
+    if (badges.length > 0) {
+      await awardBadges('demo-user-id', badges);
+      setNewBadges(badges);
+      setTimeout(() => setNewBadges([]), 3000);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{ padding: '0 16px 24px' }}
+    >
+      {/* Status bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingTop: 16,
+          paddingBottom: 8,
+        }}
+      >
+        <Link href="/settings" aria-label="Settings">
+          <Settings size={22} color="var(--tx3)" />
+        </Link>
+        <div
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            background: 'var(--green)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 800,
+          }}
+        >
+          A
+        </div>
+      </div>
+
+      {/* Greeting */}
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx3)', margin: '0 0 4px' }}>
+          {greeting}
+        </p>
+        <h1
+          style={{
+            fontSize: 26,
+            fontWeight: 900,
+            color: 'var(--tx)',
+            margin: 0,
+            lineHeight: 1.15,
+          }}
+        >
+          Ready to give today, Alex?
+        </h1>
+      </div>
+
+      {/* QuickGive */}
+      <QuickGive
+        charityName={activeCharity.displayName}
+        charityEmoji={activeCharity.emoji}
+        onDonate={handleDonate}
+        onChangeCharity={() => setSearchOpen(true)}
+      />
+
+      {/* New badge toast */}
+      {newBadges.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-amber"
+          style={{ marginTop: 10 }}
+        >
+          <p style={{ fontSize: 14, fontWeight: 800, color: '#CC7A10', margin: 0 }}>
+            🏆 Badge earned: {newBadges[0].replace('_', ' ')}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Streak section */}
+      <div style={{ marginTop: 12 }}>
+        <StreakSection currentStreak={streak} totalCents={given} causeCount={causeCount} />
+      </div>
+
+      {/* Featured */}
+      <p className="section-label">Featured today</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {FEATURED.map((charity) => (
+          <CharityCard key={charity.id} charity={charity} variant="hero" />
+        ))}
+      </div>
+
+      {/* Charity search modal */}
+      <CharitySearchModal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelect={(c) => {
+          setActiveCharity(c);
+          setSearchOpen(false);
+        }}
+      />
+    </motion.div>
+  );
+}
