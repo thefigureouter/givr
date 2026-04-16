@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { getBrowserSupabase, getAuthUser, supabaseBrowserConfigured } from '@/lib/supabase-browser';
+import { getBrowserSupabase, supabaseBrowserConfigured } from '@/lib/supabase-browser';
+import type { MeResponse } from '@/app/api/me/route';
 import type { GivingMode, RemainderPreference } from '@/types';
 
 type Step = 'mode' | 'budget' | 'card' | 'done';
@@ -24,7 +25,24 @@ const REMAINDER_OPTIONS: { value: RemainderPreference; label: string; sublabel: 
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const [userId, setUserId] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('mode');
+
+  const [userEmail, setUserEmail] = useState('demo@tapgive.co');
+  const [userName, setUserName] = useState('TapGive User');
+
+  // Resolve user ID once on mount via server-side session
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => r.ok ? r.json() as Promise<MeResponse> : null)
+      .then((me) => {
+        if (me?.id) {
+          setUserId(me.id);
+          setUserEmail(me.email || 'demo@tapgive.co');
+          setUserName(me.name || 'TapGive User');
+        }
+      });
+  }, []);
   const [mode, setMode] = useState<GivingMode>('intentional');
   const [budgetCents, setBudgetCents] = useState(2500);
   const [remainder, setRemainder] = useState<RemainderPreference>('rollover');
@@ -50,17 +68,10 @@ export default function OnboardingPage() {
     async function init() {
       // Ensure user has a Stripe customer
       try {
-        const client = getBrowserSupabase();
-        const session = client
-          ? (await client.auth.getSession()).data.session
-          : null;
-        const email = session?.user.email ?? 'demo@tapgive.co';
-        const name = session?.user.user_metadata?.name ?? 'TapGive User';
-
         await fetch('/api/stripe/create-customer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name }),
+          body: JSON.stringify({ email: userEmail, name: userName }),
         });
 
         const siRes = await fetch('/api/stripe/setup-intent', { method: 'POST' });
@@ -106,14 +117,13 @@ export default function OnboardingPage() {
   async function saveMode() {
     setSaving(true);
     try {
-      const user = await getAuthUser();
-      if (user) {
+      if (userId) {
         const client = getBrowserSupabase();
         await client!.from('profiles').update({
           giving_mode: mode,
           monthly_budget_cents: mode === 'budget' ? budgetCents : null,
           remainder_preference: remainder,
-        }).eq('id', user.id);
+        }).eq('id', userId);
       }
     } finally {
       setSaving(false);
@@ -124,13 +134,12 @@ export default function OnboardingPage() {
   async function saveBudget() {
     setSaving(true);
     try {
-      const user = await getAuthUser();
-      if (user) {
+      if (userId) {
         const client = getBrowserSupabase();
         await client!.from('profiles').update({
           monthly_budget_cents: budgetCents,
           remainder_preference: remainder,
-        }).eq('id', user.id);
+        }).eq('id', userId);
       }
     } finally {
       setSaving(false);
@@ -167,12 +176,9 @@ export default function OnboardingPage() {
     }
 
     const pm = setupIntent?.payment_method;
-    if (typeof pm === 'string') {
-      const user = await getAuthUser();
-      if (user) {
-        const client = getBrowserSupabase();
-        await client!.from('profiles').update({ stripe_payment_method_id: pm }).eq('id', user.id);
-      }
+    if (typeof pm === 'string' && userId) {
+      const client = getBrowserSupabase();
+      await client!.from('profiles').update({ stripe_payment_method_id: pm }).eq('id', userId);
     }
 
     setCardLast4('••••');
@@ -181,10 +187,9 @@ export default function OnboardingPage() {
   }
 
   async function markComplete() {
-    const user = await getAuthUser();
-    if (user) {
+    if (userId) {
       const client = getBrowserSupabase();
-      await client!.from('profiles').update({ onboarding_complete: true }).eq('id', user.id);
+      await client!.from('profiles').update({ onboarding_complete: true }).eq('id', userId);
     }
     setTimeout(() => setStep('done'), 800);
   }

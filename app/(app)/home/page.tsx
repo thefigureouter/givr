@@ -10,7 +10,7 @@ import CharityCard from '@/components/charity/CharityCard';
 import CharitySearchModal from '@/components/charity/CharitySearchModal';
 import { CHARITIES, SAMPLE_STREAK, DEMO_USER } from '@/lib/mock-data';
 import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
-import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
+import type { MeResponse } from '@/app/api/me/route';
 import { calculateStreak } from '@/lib/streak-engine';
 import { checkForNewBadges } from '@/lib/badge-engine';
 import { totalCents, uniqueCharityIds, randomId } from '@/lib/utils';
@@ -39,22 +39,11 @@ export default function HomePage() {
       let uid = 'demo-user-id';
       let uname = DEMO_USER.name;
 
-      // Try to get the real session user
-      const user = await getAuthUser();
-      if (user) {
-        uid = user.id;
-        // Prefer name from profile table; fall back to auth metadata
-        const client = getBrowserSupabase();
-        const { data: profile } = await client!
-          .from('profiles')
-          .select('name')
-          .eq('id', uid)
-          .single();
-        uname =
-          (profile as { name: string } | null)?.name ??
-          (user.user_metadata?.name as string | undefined) ??
-          user.email ??
-          DEMO_USER.name;
+      // Server-side session read — never fails due to cookie visibility issues
+      const meRes = await fetch('/api/me');
+      if (meRes.ok) {
+        const me = await meRes.json() as MeResponse;
+        if (me.id) { uid = me.id; uname = me.name; }
       }
 
       setUserId(uid);

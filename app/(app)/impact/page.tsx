@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Settings } from 'lucide-react';
 
 import { getDonations, getBadges, getStreak } from '@/lib/mock-db';
-import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
+import type { MeResponse } from '@/app/api/me/route';
 import { BADGES } from '@/lib/badge-engine';
 import { totalCents, uniqueCharityIds } from '@/lib/utils';
 import { DEMO_USER } from '@/lib/mock-data';
@@ -33,34 +33,16 @@ export default function ImpactPage() {
     async function load() {
       let uid = 'demo-user-id';
 
-      const user = await getAuthUser();
-      if (user) {
-        uid = user.id;
-        const client = getBrowserSupabase();
-        if (client) {
-          const { data: profile } = await client
-            .from('profiles')
-            .select('name, username, member_since, bio')
-            .eq('id', uid)
-            .single();
-          const name =
-            (profile as { name?: string } | null)?.name ??
-            (user.user_metadata?.name as string | undefined) ??
-            user.email ??
-            DEMO_USER.name;
-          const username =
-            (profile as { username?: string } | null)?.username ??
-            (user.email?.split('@')[0] ?? '');
-          const since =
-            (profile as { member_since?: string } | null)?.member_since ??
-            user.created_at ??
-            DEMO_USER.memberSince;
-          const bio = (profile as { bio?: string } | null)?.bio ?? '';
-          setUserName(name);
-          setUserInitial(name.charAt(0).toUpperCase());
-          setUserUsername(username);
-          setMemberSince(since);
-          setUserBio(bio);
+      const meRes = await fetch('/api/me');
+      if (meRes.ok) {
+        const me = await meRes.json() as MeResponse;
+        if (me.id) {
+          uid = me.id;
+          setUserName(me.name);
+          setUserInitial(me.name.charAt(0).toUpperCase());
+          setUserUsername(me.username);
+          setMemberSince(me.memberSince);
+          setUserBio(me.bio);
         }
       }
 

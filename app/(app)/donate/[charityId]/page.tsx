@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CreditCard } from 'lucide-react';
 import { CHARITIES, DEMO_USER } from '@/lib/mock-data';
 import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
-import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
+import type { MeResponse } from '@/app/api/me/route';
 import { sendDonationReceipt } from '@/lib/resend';
 import { calculateStreak } from '@/lib/streak-engine';
 import { checkForNewBadges } from '@/lib/badge-engine';
@@ -43,11 +43,12 @@ export default function DonatePage() {
   const charity = CHARITIES.find((c) => c.id === params.charityId) ?? null;
 
   const [userId, setUserId] = useState('demo-user-id');
+  const [userEmail, setUserEmail] = useState(DEMO_USER.email);
 
   useEffect(() => {
-    getAuthUser().then((user) => {
-      if (user) setUserId(user.id);
-    });
+    fetch('/api/me')
+      .then((r) => r.ok ? r.json() as Promise<MeResponse> : null)
+      .then((me) => { if (me?.id) { setUserId(me.id); setUserEmail(me.email); } });
   }, []);
 
   const [step, setStep] = useState<Step>('amount');
@@ -169,11 +170,6 @@ export default function DonatePage() {
       if (newBadges.length > 0) await awardBadges(userId, newBadges);
 
       // Send receipt
-      let userEmail = DEMO_USER.email;
-      try {
-        const user = await getAuthUser();
-        if (user?.email) userEmail = user.email;
-      } catch {}
       await sendDonationReceipt(userEmail, donation, charity);
 
       const qp = new URLSearchParams({

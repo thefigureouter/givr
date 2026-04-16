@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Heart } from 'lucide-react';
 import { getFeed } from '@/lib/mock-db';
-import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
+import type { MeResponse } from '@/app/api/me/route';
 import type { FeedItem } from '@/types';
 
 function timeAgo(isoDate: string): string {
@@ -29,18 +29,9 @@ export default function FeedPage() {
   const [userCity, setUserCity] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load user city for "near me" filter
-    getAuthUser().then(async (user) => {
-      if (user) {
-        const client = getBrowserSupabase();
-        const { data } = await client!
-          .from('profiles')
-          .select('city_region')
-          .eq('id', user.id)
-          .single();
-        setUserCity((data as { city_region?: string } | null)?.city_region ?? null);
-      }
-    });
+    fetch('/api/me')
+      .then((r) => r.ok ? r.json() as Promise<MeResponse> : null)
+      .then((me) => { if (me?.cityRegion) setUserCity(me.cityRegion); });
     getFeed()
       .then(setItems)
       .finally(() => setLoading(false));

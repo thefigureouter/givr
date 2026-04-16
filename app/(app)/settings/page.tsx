@@ -6,7 +6,8 @@ import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DEMO_USER } from '@/lib/mock-data';
-import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
+import { getBrowserSupabase } from '@/lib/supabase-browser';
+import type { MeResponse } from '@/app/api/me/route';
 
 const SETTINGS_KEY = 'tapgive_settings';
 const PROFILE_KEY = 'tapgive_profile';
@@ -172,28 +173,13 @@ export default function SettingsPage() {
   const [editDraft, setEditDraft] = useState<ProfileState>(profile);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
 
-  // Load the real user's profile from Supabase on mount
+  // Load the real user's profile from server on mount
   useEffect(() => {
-    getAuthUser().then(async (user) => {
-      if (!user) return;
-      const client = getBrowserSupabase();
-      const { data } = await client!
-        .from('profiles')
-        .select('name, email')
-        .eq('id', user.id)
-        .single();
-      if (data) {
-        const p = data as { name: string; email: string };
-        setProfile({ name: p.name, email: p.email, bio: '' });
-      } else {
-        // Fall back to auth metadata
-        setProfile({
-          name: (user.user_metadata?.name as string | undefined) ?? user.email ?? DEMO_USER.name,
-          email: user.email ?? DEMO_USER.email,
-          bio: '',
-        });
-      }
-    });
+    fetch('/api/me')
+      .then((r) => r.ok ? r.json() as Promise<MeResponse> : null)
+      .then((me) => {
+        if (me?.id) setProfile({ name: me.name, email: me.email, bio: me.bio });
+      });
   }, []);
 
   function updateSetting(key: keyof SettingsState, value: boolean) {
