@@ -23,7 +23,7 @@ export default function SignupPage() {
     setError('');
 
     if (supabaseConfigured && supabase) {
-      const { error: authError } = await supabase.auth.signUp({
+      const { data: signUpData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { name } },
@@ -33,7 +33,17 @@ export default function SignupPage() {
         setLoading(false);
         return;
       }
-      // Supabase sends a confirmation email by default
+
+      // Belt-and-suspenders: explicitly create the profile row via service role.
+      // This ensures the profile exists even if the DB trigger hasn't fired yet.
+      if (signUpData.user) {
+        await fetch('/api/auth/create-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: signUpData.user.id, email, name }),
+        });
+      }
+
       setVerificationSent(true);
       setLoading(false);
       return;
