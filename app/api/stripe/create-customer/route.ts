@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createCustomer } from '@/lib/stripe';
-import { supabase, supabaseConfigured, getCurrentUserId } from '@/lib/supabase';
+import { supabase, supabaseConfigured } from '@/lib/supabase';
+import { getServerUserId } from '@/lib/supabase-server';
 
 export async function POST(req: NextRequest) {
-  const userId = await getCurrentUserId();
+  const userId = await getServerUserId(req);
 
   let body: { email?: string; name?: string } = {};
   try { body = await req.json(); } catch { /* use empty defaults */ }

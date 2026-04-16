@@ -4,8 +4,6 @@ import { useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { DEMO_USER } from '@/lib/mock-data';
-
 function SuccessContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -16,17 +14,9 @@ function SuccessContent() {
   const impact = params.get('impact') ?? '';
   const streak = parseInt(params.get('streak') ?? '0', 10);
   const badge = params.get('badge') ?? '';
+  const displayEmail = params.get('email') ?? '';
 
   const dollars = (amount / 100).toFixed(amount % 100 === 0 ? 0 : 2);
-
-  // Load persisted profile email if available
-  let displayEmail = DEMO_USER.email;
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem('tapgive_profile');
-      if (saved) displayEmail = JSON.parse(saved).email ?? DEMO_USER.email;
-    } catch {}
-  }
 
   useEffect(() => {
     timerRef.current = setTimeout(() => router.push('/home'), 5000);

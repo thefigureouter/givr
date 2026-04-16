@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSetupIntent } from '@/lib/stripe';
-import { supabase, supabaseConfigured, getCurrentUserId } from '@/lib/supabase';
+import { supabase, supabaseConfigured } from '@/lib/supabase';
+import { getServerUserId } from '@/lib/supabase-server';
 
-export async function POST(_req: NextRequest) {
-  const userId = await getCurrentUserId();
+export async function POST(req: NextRequest) {
+  const userId = await getServerUserId(req);
 
   // Look up the user's existing Stripe customer ID
   let customerId: string | null = null;

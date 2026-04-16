@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { supabase, supabaseConfigured, getCurrentUserId } from '@/lib/supabase';
+import { getBrowserSupabase, supabaseBrowserConfigured } from '@/lib/supabase-browser';
 import type { GivingMode, RemainderPreference } from '@/types';
 
 type Step = 'mode' | 'budget' | 'card' | 'done';
@@ -50,8 +50,9 @@ export default function OnboardingPage() {
     async function init() {
       // Ensure user has a Stripe customer
       try {
-        const session = supabaseConfigured && supabase
-          ? (await supabase.auth.getSession()).data.session
+        const client = getBrowserSupabase();
+        const session = client
+          ? (await client.auth.getSession()).data.session
           : null;
         const email = session?.user.email ?? 'demo@tapgive.co';
         const name = session?.user.user_metadata?.name ?? 'TapGive User';
@@ -105,13 +106,16 @@ export default function OnboardingPage() {
   async function saveMode() {
     setSaving(true);
     try {
-      if (supabaseConfigured && supabase) {
-        const userId = await getCurrentUserId();
-        await supabase.from('profiles').update({
-          giving_mode: mode,
-          monthly_budget_cents: mode === 'budget' ? budgetCents : null,
-          remainder_preference: remainder,
-        }).eq('id', userId);
+      const client = getBrowserSupabase();
+      if (client) {
+        const { data: { user } } = await client.auth.getUser();
+        if (user) {
+          await client.from('profiles').update({
+            giving_mode: mode,
+            monthly_budget_cents: mode === 'budget' ? budgetCents : null,
+            remainder_preference: remainder,
+          }).eq('id', user.id);
+        }
       }
     } finally {
       setSaving(false);
@@ -122,12 +126,15 @@ export default function OnboardingPage() {
   async function saveBudget() {
     setSaving(true);
     try {
-      if (supabaseConfigured && supabase) {
-        const userId = await getCurrentUserId();
-        await supabase.from('profiles').update({
-          monthly_budget_cents: budgetCents,
-          remainder_preference: remainder,
-        }).eq('id', userId);
+      const client = getBrowserSupabase();
+      if (client) {
+        const { data: { user } } = await client.auth.getUser();
+        if (user) {
+          await client.from('profiles').update({
+            monthly_budget_cents: budgetCents,
+            remainder_preference: remainder,
+          }).eq('id', user.id);
+        }
       }
     } finally {
       setSaving(false);
@@ -164,9 +171,14 @@ export default function OnboardingPage() {
     }
 
     const pm = setupIntent?.payment_method;
-    if (typeof pm === 'string' && supabaseConfigured && supabase) {
-      const userId = await getCurrentUserId();
-      await supabase.from('profiles').update({ stripe_payment_method_id: pm }).eq('id', userId);
+    if (typeof pm === 'string') {
+      const client = getBrowserSupabase();
+      if (client) {
+        const { data: { user } } = await client.auth.getUser();
+        if (user) {
+          await client.from('profiles').update({ stripe_payment_method_id: pm }).eq('id', user.id);
+        }
+      }
     }
 
     setCardLast4('••••');
@@ -175,9 +187,12 @@ export default function OnboardingPage() {
   }
 
   async function markComplete() {
-    if (supabaseConfigured && supabase) {
-      const userId = await getCurrentUserId();
-      await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId);
+    const client = getBrowserSupabase();
+    if (client) {
+      const { data: { user } } = await client.auth.getUser();
+      if (user) {
+        await client.from('profiles').update({ onboarding_complete: true }).eq('id', user.id);
+      }
     }
     setTimeout(() => setStep('done'), 800);
   }

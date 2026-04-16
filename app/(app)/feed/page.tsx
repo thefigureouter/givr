@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Heart } from 'lucide-react';
 import { getFeed } from '@/lib/mock-db';
-import { DEMO_USER } from '@/lib/mock-data';
+import { getBrowserSupabase } from '@/lib/supabase-browser';
 import type { FeedItem } from '@/types';
 
 function timeAgo(isoDate: string): string {
@@ -26,8 +26,23 @@ export default function FeedPage() {
   const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [nearMe, setNearMe] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [userCity, setUserCity] = useState<string | null>(null);
 
   useEffect(() => {
+    // Load user city for "near me" filter
+    const client = getBrowserSupabase();
+    if (client) {
+      client.auth.getUser().then(async ({ data: { user } }) => {
+        if (user) {
+          const { data } = await client
+            .from('profiles')
+            .select('city_region')
+            .eq('id', user.id)
+            .single();
+          setUserCity((data as { city_region?: string } | null)?.city_region ?? null);
+        }
+      });
+    }
     getFeed()
       .then(setItems)
       .finally(() => setLoading(false));
@@ -37,8 +52,8 @@ export default function FeedPage() {
     setLiked((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  const displayed = nearMe
-    ? items.filter((item) => item.cityRegion === DEMO_USER.cityRegion)
+  const displayed = nearMe && userCity
+    ? items.filter((item) => item.cityRegion === userCity)
     : items;
 
   return (
@@ -123,7 +138,7 @@ export default function FeedPage() {
         >
           <div style={{ fontSize: 36, marginBottom: 12 }}>📍</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx2)' }}>
-            No activity near {DEMO_USER.cityRegion} yet
+            No activity near {userCity ?? 'your area'} yet
           </div>
           <div style={{ fontSize: 13, marginTop: 6 }}>
             Be the first to give in your area!

@@ -9,8 +9,50 @@ import {
 } from './mock-data';
 import { randomId } from './utils';
 import { supabase, supabaseConfigured } from './supabase';
+import { getBrowserSupabase } from './supabase-browser';
+
+/**
+ * Returns the best available Supabase client for the current environment.
+ *
+ * - Browser: uses the @supabase/ssr cookie-based client so RLS can see the
+ *   authenticated session (createBrowserClient stores JWTs in cookies).
+ * - Server / API routes: falls back to the anon-key singleton which is fine
+ *   for public data; API routes that write user data should use supabaseAdmin.
+ */
+function getClient() {
+  if (typeof window !== 'undefined') {
+    const browserClient = getBrowserSupabase();
+    if (browserClient) return browserClient;
+  }
+  return supabase;
+}
 
 // ─── Helpers: snake_case ↔ camelCase ─────────────────────────────────────────
+
+function charityFromRow(r: Record<string, unknown>): Charity {
+  return {
+    id: r.id as string,
+    displayName: r.display_name as string,
+    legalName: (r.legal_name as string | null) ?? (r.display_name as string),
+    category: r.category as Charity['category'],
+    emoji: (r.emoji as string | null) ?? '💚',
+    missionSummary: r.mission_summary as string,
+    impactSummary: r.impact_summary as string | undefined,
+    logoUrl: r.logo_url as string | undefined,
+    website: r.website as string | undefined,
+    verificationStatus: r.verification_status as Charity['verificationStatus'],
+    cityRegion: r.city_region as string | undefined,
+    country: r.country as string,
+    popularityScore: r.popularity_score as number,
+    urgencyScore: r.urgency_score as number,
+    impactMetricLabel: (r.impact_metric_label as string | null) ?? 'impact per dollar',
+    impactPerDollar: (r.impact_per_dollar as number | null) ?? 1,
+    stripeAccountId: r.stripe_account_id as string | undefined,
+    ein: r.ein as string | undefined,
+    orgType: r.org_type as Charity['orgType'],
+    taxDeductible: r.tax_deductible as boolean | undefined,
+  };
+}
 
 function donationFromRow(row: Record<string, unknown>): Donation {
   return {
@@ -84,7 +126,7 @@ function getStore(): MockStore {
 export async function getCharities(): Promise<Charity[]> {
   if (supabaseConfigured && supabase) {
     const { data, error } = await supabase.from('charities').select('*').eq('verification_status', 'VERIFIED');
-    if (!error && data) return data as Charity[];
+    if (!error && data) return data.map((r) => charityFromRow(r as Record<string, unknown>));
   }
   return getStore().charities;
 }
@@ -92,7 +134,7 @@ export async function getCharities(): Promise<Charity[]> {
 export async function getCharityById(id: string): Promise<Charity | null> {
   if (supabaseConfigured && supabase) {
     const { data, error } = await supabase.from('charities').select('*').eq('id', id).single();
-    if (!error && data) return data as Charity;
+    if (!error && data) return charityFromRow(data as Record<string, unknown>);
   }
   return getStore().charities.find((c) => c.id === id) ?? null;
 }
@@ -104,7 +146,7 @@ export async function searchCharities(query: string): Promise<Charity[]> {
       .select('*')
       .eq('verification_status', 'VERIFIED')
       .or(`display_name.ilike.%${query}%,mission_summary.ilike.%${query}%`);
-    if (!error && data) return data as Charity[];
+    if (!error && data) return data.map((r) => charityFromRow(r as Record<string, unknown>));
   }
   const q = query.toLowerCase();
   return getStore().charities.filter(
@@ -115,8 +157,9 @@ export async function searchCharities(query: string): Promise<Charity[]> {
 // ─── Donations ────────────────────────────────────────────────────────────────
 
 export async function getDonations(userId: string): Promise<Donation[]> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    const { data, error } = await client
       .from('donations')
       .select('*')
       .eq('user_id', userId)
@@ -132,8 +175,9 @@ export async function getDonations(userId: string): Promise<Donation[]> {
 export async function createDonation(
   data: Omit<Donation, 'id' | 'createdAt' | 'idempotencyKey'>
 ): Promise<Donation> {
-  if (supabaseConfigured && supabase) {
-    const { data: row, error } = await supabase
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    const { data: row, error } = await client
       .from('donations')
       .insert({
         user_id: data.userId,
@@ -169,8 +213,9 @@ export async function createDonation(
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    const { data, error } = await client.from('profiles').select('*').eq('id', userId).single();
     if (!error && data) {
       const r = data as Record<string, unknown>;
       return {
@@ -191,8 +236,9 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 }
 
 export async function updateUserProfile(userId: string, updates: Partial<Pick<UserProfile, 'name' | 'email' | 'bio' | 'cityRegion' | 'username' | 'privacyMode'>>): Promise<void> {
-  if (supabaseConfigured && supabase) {
-    await supabase.from('profiles').update({
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    await client.from('profiles').update({
       name: updates.name,
       email: updates.email,
       bio: updates.bio,
@@ -213,8 +259,9 @@ export async function updateUserProfile(userId: string, updates: Partial<Pick<Us
 // ─── Streak ───────────────────────────────────────────────────────────────────
 
 export async function getStreak(userId: string): Promise<MockStore['streak'] | null> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('streaks').select('*').eq('user_id', userId).single();
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    const { data, error } = await client.from('streaks').select('*').eq('user_id', userId).single();
     if (!error && data) {
       const r = data as Record<string, unknown>;
       return {
@@ -238,8 +285,9 @@ export async function updateStreak(
   lastDonationDate: Date
 ): Promise<void> {
   const longest = Math.max(longestStreak, newStreak);
-  if (supabaseConfigured && supabase) {
-    await supabase.from('streaks').upsert({
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    await client.from('streaks').upsert({
       user_id: userId,
       current_streak: newStreak,
       longest_streak: longest,
@@ -256,17 +304,19 @@ export async function updateStreak(
 // ─── Badges ──────────────────────────────────────────────────────────────────
 
 export async function getBadges(userId: string): Promise<Badge[]> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('badges').select('*').eq('user_id', userId);
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    const { data, error } = await client.from('badges').select('*').eq('user_id', userId);
     if (!error && data) return data.map((r) => badgeFromRow(r as Record<string, unknown>));
   }
   return getStore().badges.filter((b) => b.userId === userId);
 }
 
 export async function awardBadges(userId: string, badgeTypes: string[]): Promise<void> {
-  if (supabaseConfigured && supabase) {
+  const client = getClient();
+  if (supabaseConfigured && client) {
     const rows = badgeTypes.map((bt) => ({ user_id: userId, badge_type: bt }));
-    await supabase.from('badges').upsert(rows, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
+    await client.from('badges').upsert(rows, { onConflict: 'user_id,badge_type', ignoreDuplicates: true });
     return;
   }
   const store = getStore();
@@ -282,8 +332,9 @@ export async function awardBadges(userId: string, badgeTypes: string[]): Promise
 // ─── Feed ─────────────────────────────────────────────────────────────────────
 
 export async function getFeed(): Promise<FeedItem[]> {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    const { data, error } = await client
       .from('feed_items')
       .select('*, charity:charities(*)')
       .eq('privacy_mode', 'PUBLIC')
@@ -312,8 +363,9 @@ export async function getFeed(): Promise<FeedItem[]> {
 }
 
 export async function addFeedItem(item: Omit<FeedItem, 'id'>): Promise<void> {
-  if (supabaseConfigured && supabase) {
-    await supabase.from('feed_items').insert({
+  const client = getClient();
+  if (supabaseConfigured && client) {
+    await client.from('feed_items').insert({
       user_id: item.userId,
       display_name: item.displayName,
       amount_cents: item.amountCents,

@@ -6,7 +6,8 @@
  * and will be charged in a weekly/monthly batch.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, supabaseConfigured, getCurrentUserId } from '@/lib/supabase';
+import { supabase, supabaseConfigured } from '@/lib/supabase';
+import { getServerUserId } from '@/lib/supabase-server';
 import { randomId } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'amountCents must be a positive integer' }, { status: 400 });
   }
 
-  const userId = await getCurrentUserId();
+  const userId = await getServerUserId(req);
   const safePrivacy = ['PUBLIC', 'FRIENDS', 'PRIVATE'].includes(String(privacyMode))
     ? String(privacyMode)
     : 'PUBLIC';

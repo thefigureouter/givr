@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Settings } from 'lucide-react';
 
 import { getDonations, getBadges, getStreak } from '@/lib/mock-db';
+import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { BADGES } from '@/lib/badge-engine';
 import { totalCents, uniqueCharityIds } from '@/lib/utils';
 import { DEMO_USER } from '@/lib/mock-data';
@@ -15,6 +16,12 @@ import type { Badge } from '@/types';
 const ALL_BADGE_TYPES = Object.keys(BADGES) as Badge['badgeType'][];
 
 export default function ImpactPage() {
+  const [userId, setUserId] = useState('demo-user-id');
+  const [userName, setUserName] = useState(DEMO_USER.name);
+  const [userInitial, setUserInitial] = useState(DEMO_USER.name.charAt(0));
+  const [userUsername, setUserUsername] = useState(DEMO_USER.username ?? '');
+  const [memberSince, setMemberSince] = useState(DEMO_USER.memberSince);
+  const [userBio, setUserBio] = useState(DEMO_USER.bio ?? '');
   const [givenCents, setGivenCents] = useState(0);
   const [causeCount, setCauseCount] = useState(0);
   const [donationCount, setDonationCount] = useState(0);
@@ -24,10 +31,45 @@ export default function ImpactPage() {
 
   useEffect(() => {
     async function load() {
+      let uid = 'demo-user-id';
+
+      const client = getBrowserSupabase();
+      if (client) {
+        const { data: { user } } = await client.auth.getUser();
+        if (user) {
+          uid = user.id;
+          const { data: profile } = await client
+            .from('profiles')
+            .select('name, username, member_since, bio')
+            .eq('id', uid)
+            .single();
+          const name =
+            (profile as { name?: string } | null)?.name ??
+            (user.user_metadata?.name as string | undefined) ??
+            user.email ??
+            DEMO_USER.name;
+          const username =
+            (profile as { username?: string } | null)?.username ??
+            (user.email?.split('@')[0] ?? '');
+          const since =
+            (profile as { member_since?: string } | null)?.member_since ??
+            user.created_at ??
+            DEMO_USER.memberSince;
+          const bio = (profile as { bio?: string } | null)?.bio ?? '';
+          setUserName(name);
+          setUserInitial(name.charAt(0).toUpperCase());
+          setUserUsername(username);
+          setMemberSince(since);
+          setUserBio(bio);
+        }
+      }
+
+      setUserId(uid);
+
       const [donations, badges, streakData] = await Promise.all([
-        getDonations('demo-user-id'),
-        getBadges('demo-user-id'),
-        getStreak('demo-user-id'),
+        getDonations(uid),
+        getBadges(uid),
+        getStreak(uid),
       ]);
       setGivenCents(totalCents(donations));
       setCauseCount(uniqueCharityIds(donations).length);
@@ -40,7 +82,7 @@ export default function ImpactPage() {
   }, []);
 
   const router = useRouter();
-  const dollars = (givenCents / 100).toFixed(0);
+  const dollars = (givenCents / 100).toFixed(2);
 
   return (
     <motion.div
@@ -109,7 +151,6 @@ export default function ImpactPage() {
               opacity: 0.2,
             }}
           />
-          {/* Edit button */}
           <button
             onClick={() => router.push('/settings')}
             style={{
@@ -148,17 +189,11 @@ export default function ImpactPage() {
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             }}
           >
-            A
+            {userInitial}
           </div>
 
           {/* Total given */}
-          <div
-            style={{
-              position: 'absolute',
-              top: -28 + 18,
-              right: 14,
-            }}
-          >
+          <div style={{ position: 'absolute', top: -28 + 18, right: 14 }}>
             <div
               style={{
                 background: 'var(--gl)',
@@ -179,18 +214,20 @@ export default function ImpactPage() {
 
           <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--tx)' }}>
-              {DEMO_USER.name}
+              {userName}
             </div>
             <div style={{ fontSize: 13, color: 'var(--tx3)', fontWeight: 600, marginTop: 2 }}>
-              @{DEMO_USER.username} · member since{' '}
-              {new Date(DEMO_USER.memberSince).toLocaleDateString('en-US', {
+              {userUsername ? `@${userUsername} · ` : ''}member since{' '}
+              {new Date(memberSince).toLocaleDateString('en-US', {
                 month: 'long',
                 year: 'numeric',
               })}
             </div>
-            <p style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.5, margin: '8px 0' }}>
-              {DEMO_USER.bio}
-            </p>
+            {userBio && (
+              <p style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.5, margin: '8px 0' }}>
+                {userBio}
+              </p>
+            )}
 
             {/* Stat pills */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
@@ -203,10 +240,7 @@ export default function ImpactPage() {
       </div>
 
       {/* Transactions card */}
-      <Link
-        href="/history"
-        style={{ textDecoration: 'none' }}
-      >
+      <Link href="/history" style={{ textDecoration: 'none' }}>
         <div
           className="card tap-scale"
           style={{
@@ -250,9 +284,7 @@ export default function ImpactPage() {
               }}
             >
               <div style={{ fontSize: 24 }}>{emoji}</div>
-              <div
-                style={{ fontSize: 11, fontWeight: 700, color: 'var(--gd)', marginTop: 4 }}
-              >
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gd)', marginTop: 4 }}>
                 {label}
               </div>
             </div>
@@ -262,13 +294,7 @@ export default function ImpactPage() {
 
       {/* Badges */}
       <p className="section-label">Badges</p>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: 10,
-        }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
         {ALL_BADGE_TYPES.map((bt) => {
           const earned = earnedBadges.includes(bt);
           const badge = BADGES[bt];

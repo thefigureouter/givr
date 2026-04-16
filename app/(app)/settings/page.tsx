@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DEMO_USER } from '@/lib/mock-data';
+import { getBrowserSupabase } from '@/lib/supabase-browser';
 
 const SETTINGS_KEY = 'tapgive_settings';
 const PROFILE_KEY = 'tapgive_profile';
@@ -148,6 +149,14 @@ function SettingRow({
       </Link>
     );
   }
+  // When there's a toggle, the Toggle button is the interactive element — use div to avoid button-in-button
+  if (toggle) {
+    return (
+      <div style={{ width: '100%', display: 'block', textAlign: 'left' }}>
+        {inner}
+      </div>
+    );
+  }
   return (
     <button onClick={onClick} style={{ width: '100%', display: 'block', textAlign: 'left' }}>
       {inner}
@@ -163,6 +172,31 @@ export default function SettingsPage() {
   const [editDraft, setEditDraft] = useState<ProfileState>(profile);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
 
+  // Load the real user's profile from Supabase on mount
+  useEffect(() => {
+    const client = getBrowserSupabase();
+    if (!client) return;
+    client.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await client
+        .from('profiles')
+        .select('name, email')
+        .eq('id', user.id)
+        .single();
+      if (data) {
+        const p = data as { name: string; email: string };
+        setProfile({ name: p.name, email: p.email, bio: '' });
+      } else {
+        // Fall back to auth metadata
+        setProfile({
+          name: (user.user_metadata?.name as string | undefined) ?? user.email ?? DEMO_USER.name,
+          email: user.email ?? DEMO_USER.email,
+          bio: '',
+        });
+      }
+    });
+  }, []);
+
   function updateSetting(key: keyof SettingsState, value: boolean) {
     const next = { ...settings, [key]: value };
     setSettings(next);
@@ -175,7 +209,9 @@ export default function SettingsPage() {
     setEditOpen(false);
   }
 
-  function handleSignOut() {
+  async function handleSignOut() {
+    const client = getBrowserSupabase();
+    if (client) await client.auth.signOut(); // clears session cookie
     localStorage.clear();
     router.push('/login');
   }

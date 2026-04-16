@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CreditCard } from 'lucide-react';
-import { CHARITIES } from '@/lib/mock-data';
+import { CHARITIES, DEMO_USER } from '@/lib/mock-data';
 import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
+import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { sendDonationReceipt } from '@/lib/resend';
 import { calculateStreak } from '@/lib/streak-engine';
 import { checkForNewBadges } from '@/lib/badge-engine';
@@ -40,6 +41,16 @@ export default function DonatePage() {
   const params = useParams<{ charityId: string }>();
   const router = useRouter();
   const charity = CHARITIES.find((c) => c.id === params.charityId) ?? null;
+
+  const [userId, setUserId] = useState('demo-user-id');
+
+  useEffect(() => {
+    const client = getBrowserSupabase();
+    if (!client) return;
+    client.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
 
   const [step, setStep] = useState<Step>('amount');
   const [selectedCents, setSelectedCents] = useState(1000);
@@ -127,7 +138,7 @@ export default function DonatePage() {
       const paymentIntentId = clientSecret?.replace('mock_pi_secret_', 'pi_mock_') ?? 'pi_mock_local';
 
       const donation = await createDonation({
-        userId: 'demo-user-id',
+        userId,
         charityId: charity.id,
         amountCents: effectiveCents,
         tipCents: 0,
@@ -143,27 +154,30 @@ export default function DonatePage() {
       });
 
       // Update streak
-      const streakData = await getStreak('demo-user-id');
+      const streakData = await getStreak(userId);
       const { newStreak } = calculateStreak(
         streakData?.lastDonationDate ?? null,
         streakData?.currentStreak ?? 0
       );
-      await updateStreak('demo-user-id', newStreak, streakData?.longestStreak ?? 0, new Date());
+      await updateStreak(userId, newStreak, streakData?.longestStreak ?? 0, new Date());
 
       // Check badges
       const [donations, existingBadges] = await Promise.all([
-        getDonations('demo-user-id'),
-        getBadges('demo-user-id'),
+        getDonations(userId),
+        getBadges(userId),
       ]);
       const earnedTypes = existingBadges.map((b) => b.badgeType);
       const newBadges = checkForNewBadges(donations, newStreak, earnedTypes);
-      if (newBadges.length > 0) await awardBadges('demo-user-id', newBadges);
+      if (newBadges.length > 0) await awardBadges(userId, newBadges);
 
       // Send receipt
-      let userEmail = 'alex@email.com';
+      let userEmail = DEMO_USER.email;
       try {
-        const saved = localStorage.getItem('tapgive_profile');
-        if (saved) userEmail = JSON.parse(saved).email ?? userEmail;
+        const client = getBrowserSupabase();
+        if (client) {
+          const { data: { user } } = await client.auth.getUser();
+          if (user?.email) userEmail = user.email;
+        }
       } catch {}
       await sendDonationReceipt(userEmail, donation, charity);
 
@@ -173,6 +187,7 @@ export default function DonatePage() {
         impact: impactText,
         streak: String(newStreak),
         badge: newBadges[0] ?? '',
+        email: userEmail,
       });
       router.push(`/donate/success?${qp.toString()}`);
     } catch {

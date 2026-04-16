@@ -8,7 +8,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaymentIntent } from '@/lib/stripe';
 import { createDonation, getCharityById } from '@/lib/mock-db';
-import { supabase, supabaseConfigured, getCurrentUserId } from '@/lib/supabase';
+import { supabase, supabaseConfigured } from '@/lib/supabase';
+import { getServerUserId } from '@/lib/supabase-server';
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     ? (String(privacyMode) as 'PUBLIC' | 'FRIENDS' | 'PRIVATE')
     : 'PUBLIC';
 
-  const userId = await getCurrentUserId();
+  const userId = await getServerUserId(req);
 
   // Load user's Stripe customer + payment method for off-session charge
   let customerId: string | undefined;

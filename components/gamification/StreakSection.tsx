@@ -7,7 +7,7 @@ interface StreakSectionProps {
 }
 
 export default function StreakSection({ currentStreak, totalCents, causeCount }: StreakSectionProps) {
-  const totalDollars = (totalCents / 100).toFixed(0);
+  const totalDollars = (totalCents / 100).toFixed(2);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

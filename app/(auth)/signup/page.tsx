@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, supabaseConfigured } from '@/lib/supabase';
+import { getBrowserSupabase, supabaseBrowserConfigured } from '@/lib/supabase-browser';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -22,8 +22,9 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
 
-    if (supabaseConfigured && supabase) {
-      const { data: signUpData, error: authError } = await supabase.auth.signUp({
+    if (supabaseBrowserConfigured) {
+      const client = getBrowserSupabase()!;
+      const { data: signUpData, error: authError } = await client.auth.signUp({
         email,
         password,
         options: { data: { name } },

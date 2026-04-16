@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase, supabaseConfigured } from '@/lib/supabase';
+import { getBrowserSupabase, supabaseBrowserConfigured } from '@/lib/supabase-browser';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,13 +17,15 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    if (supabaseConfigured && supabase) {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    if (supabaseBrowserConfigured) {
+      const client = getBrowserSupabase()!;
+      const { error: authError } = await client.auth.signInWithPassword({ email, password });
       if (authError) {
         setError(authError.message);
         setLoading(false);
         return;
       }
+      // Session is now stored in cookies — proxy will allow /home through
     }
 
     router.push('/home');
@@ -96,7 +98,7 @@ export default function LoginPage() {
           <Link href="/signup" style={{ color: 'var(--green)', fontWeight: 700 }}>Sign up free</Link>
         </p>
 
-        {!supabaseConfigured && (
+        {!supabaseBrowserConfigured && (
           <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--tx3)' }}>
             Demo mode — tap Sign in to continue
           </p>

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getDonations } from '@/lib/mock-db';
+import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { CHARITIES, DEMO_USER } from '@/lib/mock-data';
 import { groupByMonth, totalCents } from '@/lib/utils';
 import type { Donation } from '@/types';
@@ -14,11 +15,34 @@ const YEARS = ['2024', '2023', 'All time'];
 export default function HistoryPage() {
   const router = useRouter();
   const [donations, setDonations] = useState<Donation[]>([]);
-  const [activeYear, setActiveYear] = useState('2024');
+  const [activeYear, setActiveYear] = useState(new Date().getFullYear().toString());
   const [exportMsg, setExportMsg] = useState('');
+  const [userName, setUserName] = useState(DEMO_USER.name);
 
   useEffect(() => {
-    getDonations('demo-user-id').then(setDonations);
+    async function load() {
+      let uid = 'demo-user-id';
+      const client = getBrowserSupabase();
+      if (client) {
+        const { data: { user } } = await client.auth.getUser();
+        if (user) {
+          uid = user.id;
+          const { data: profile } = await client
+            .from('profiles')
+            .select('name')
+            .eq('id', uid)
+            .single();
+          setUserName(
+            (profile as { name?: string } | null)?.name ??
+            (user.user_metadata?.name as string | undefined) ??
+            user.email ??
+            DEMO_USER.name
+          );
+        }
+      }
+      getDonations(uid).then(setDonations);
+    }
+    load();
   }, []);
 
   const filtered = donations.filter((d) => {
@@ -78,7 +102,7 @@ export default function HistoryPage() {
         <body>
           <h1>📄 Tax Summary</h1>
           <div class="meta">
-            ${esc(DEMO_USER.name)} · ${esc(taxYearLabel)} · ${filtered.length} donations
+            ${esc(userName)} · ${esc(taxYearLabel)} · ${filtered.length} donations
           </div>
           <table>
             <thead>
@@ -199,7 +223,7 @@ export default function HistoryPage() {
                 Total
               </div>
               <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--tx)' }}>
-                ${(total / 100).toFixed(0)}
+                ${(total / 100).toFixed(2)}
               </div>
             </div>
             <div>

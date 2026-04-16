@@ -10,6 +10,7 @@ import CharityCard from '@/components/charity/CharityCard';
 import CharitySearchModal from '@/components/charity/CharitySearchModal';
 import { CHARITIES, SAMPLE_STREAK, DEMO_USER } from '@/lib/mock-data';
 import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
+import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { calculateStreak } from '@/lib/streak-engine';
 import { checkForNewBadges } from '@/lib/badge-engine';
 import { totalCents, uniqueCharityIds, randomId } from '@/lib/utils';
@@ -18,6 +19,8 @@ import type { Charity, BadgeType } from '@/types';
 const FEATURED = [CHARITIES[0], CHARITIES[5]]; // Feeding America, Doctors Without Borders
 
 export default function HomePage() {
+  const [userId, setUserId] = useState('demo-user-id');
+  const [userName, setUserName] = useState(DEMO_USER.name);
   const [activeCharity, setActiveCharity] = useState<Charity>(CHARITIES[0]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [streak, setStreak] = useState(SAMPLE_STREAK.currentStreak);
@@ -29,13 +32,40 @@ export default function HomePage() {
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? 'Good morning 👋' : hour < 18 ? 'Good afternoon 👋' : 'Good evening 👋';
+  const firstName = userName.split(' ')[0];
 
   useEffect(() => {
     async function load() {
+      let uid = 'demo-user-id';
+      let uname = DEMO_USER.name;
+
+      // Try to get the real session user
+      const client = getBrowserSupabase();
+      if (client) {
+        const { data: { user } } = await client.auth.getUser();
+        if (user) {
+          uid = user.id;
+          // Prefer name from profile table; fall back to auth metadata
+          const { data: profile } = await client
+            .from('profiles')
+            .select('name')
+            .eq('id', uid)
+            .single();
+          uname =
+            (profile as { name: string } | null)?.name ??
+            (user.user_metadata?.name as string | undefined) ??
+            user.email ??
+            DEMO_USER.name;
+        }
+      }
+
+      setUserId(uid);
+      setUserName(uname);
+
       try {
         const [streakData, donations] = await Promise.all([
-          getStreak('demo-user-id'),
-          getDonations('demo-user-id'),
+          getStreak(uid),
+          getDonations(uid),
         ]);
         if (streakData) setStreak(streakData.currentStreak);
         setGiven(totalCents(donations));
@@ -49,7 +79,7 @@ export default function HomePage() {
 
   async function handleDonate(_amount: string, amountCents: number) {
     await createDonation({
-      userId: 'demo-user-id',
+      userId,
       charityId: activeCharity.id,
       amountCents,
       tipCents: 0,
@@ -64,23 +94,23 @@ export default function HomePage() {
       donatedAt: new Date().toISOString(),
     });
 
-    const streakData = await getStreak('demo-user-id');
+    const streakData = await getStreak(userId);
     const { newStreak } = calculateStreak(
       streakData?.lastDonationDate ?? null,
       streakData?.currentStreak ?? 0
     );
-    await updateStreak('demo-user-id', newStreak, streakData?.longestStreak ?? 0, new Date());
+    await updateStreak(userId, newStreak, streakData?.longestStreak ?? 0, new Date());
     setStreak(newStreak);
 
-    const donations = await getDonations('demo-user-id');
+    const donations = await getDonations(userId);
     setGiven(totalCents(donations));
     setCauseCount(uniqueCharityIds(donations).length);
 
-    const existingBadges = await getBadges('demo-user-id');
+    const existingBadges = await getBadges(userId);
     const earnedTypes = existingBadges.map((b) => b.badgeType);
     const badges = checkForNewBadges(donations, newStreak, earnedTypes);
     if (badges.length > 0) {
-      await awardBadges('demo-user-id', badges);
+      await awardBadges(userId, badges);
       setNewBadges(badges);
       setTimeout(() => setNewBadges([]), 3000);
     }
@@ -120,7 +150,7 @@ export default function HomePage() {
             fontWeight: 800,
           }}
         >
-          {DEMO_USER.name.charAt(0)}
+          {userName.charAt(0)}
         </div>
       </div>
 
@@ -138,7 +168,7 @@ export default function HomePage() {
             lineHeight: 1.15,
           }}
         >
-          Ready to give today, {DEMO_USER.name.split(' ')[0]}?
+          Ready to give today, {firstName}?
         </h1>
       </div>
 
