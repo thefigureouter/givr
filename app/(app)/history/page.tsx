@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getDonations } from '@/lib/mock-db';
 import type { MeResponse } from '@/app/api/me/route';
-import { CHARITIES, DEMO_USER } from '@/lib/mock-data';
+import { CHARITIES } from '@/lib/mock-data';
 import { groupByMonth, totalCents } from '@/lib/utils';
 import type { Donation } from '@/types';
 
@@ -17,11 +17,11 @@ export default function HistoryPage() {
   const [donations, setDonations] = useState<Donation[]>([]);
   const [activeYear, setActiveYear] = useState(new Date().getFullYear().toString());
   const [exportMsg, setExportMsg] = useState('');
-  const [userName, setUserName] = useState(DEMO_USER.name);
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
     async function load() {
-      let uid = 'demo-user-id';
+      let uid = '';
       const meRes = await fetch('/api/me');
       if (meRes.ok) {
         const me = await meRes.json() as MeResponse;

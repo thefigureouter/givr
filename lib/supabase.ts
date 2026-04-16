@@ -18,13 +18,13 @@ export const supabaseAdmin =
     : null;
 
 export async function getSession() {
-  if (!supabase) return { user: { id: 'demo-user-id', email: 'alex@email.com' }, access_token: 'mock_token' };
+  if (!supabase) return { user: { id: 'demo-user-id', email: '' }, access_token: 'mock_token' };
   const { data } = await supabase.auth.getSession();
-  return data.session ?? { user: { id: 'demo-user-id', email: 'alex@email.com' }, access_token: 'mock_token' };
+  return data.session ?? null;
 }
 
 export async function getCurrentUserId(): Promise<string> {
-  if (!supabase) return 'demo-user-id';
+  if (!supabase) return 'demo-user-id'; // demo mode: no Supabase config
   const { data } = await supabase.auth.getSession();
-  return data.session?.user.id ?? 'demo-user-id';
+  return data.session?.user.id ?? '';
 }

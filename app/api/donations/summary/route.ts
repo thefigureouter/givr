@@ -4,12 +4,24 @@
  * Returns aggregate stats for the current user:
  * total donated, count, unique charities, current streak, pending tap balance.
  */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { getDonations, getStreak } from '@/lib/mock-db';
-import { supabase, supabaseConfigured, getCurrentUserId } from '@/lib/supabase';
 
-export async function GET() {
-  const userId = await getCurrentUserId();
+async function getRequestUserId(req: NextRequest): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return 'demo-user-id'; // demo mode: no Supabase config
+  const supabase = createServerClient(url, anonKey, {
+    cookies: { getAll() { return req.cookies.getAll(); }, setAll() {} },
+  });
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+export async function GET(req: NextRequest) {
+  const userId = await getRequestUserId(req);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const [donations, streak] = await Promise.all([
     getDonations(userId),
@@ -21,7 +33,12 @@ export async function GET() {
 
   // Pending tap balance (transactions not yet charged)
   let pendingCents = 0;
-  if (supabaseConfigured && supabase) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (supabaseUrl && anonKey) {
+    const supabase = createServerClient(supabaseUrl, anonKey, {
+      cookies: { getAll() { return req.cookies.getAll(); }, setAll() {} },
+    });
     const { data } = await supabase
       .from('transactions')
       .select('amount_cents')

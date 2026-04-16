@@ -10,18 +10,17 @@ import { getDonations, getBadges, getStreak } from '@/lib/mock-db';
 import type { MeResponse } from '@/app/api/me/route';
 import { BADGES } from '@/lib/badge-engine';
 import { totalCents, uniqueCharityIds } from '@/lib/utils';
-import { DEMO_USER } from '@/lib/mock-data';
 import type { Badge } from '@/types';
 
 const ALL_BADGE_TYPES = Object.keys(BADGES) as Badge['badgeType'][];
 
 export default function ImpactPage() {
-  const [userId, setUserId] = useState('demo-user-id');
-  const [userName, setUserName] = useState(DEMO_USER.name);
-  const [userInitial, setUserInitial] = useState(DEMO_USER.name.charAt(0));
-  const [userUsername, setUserUsername] = useState(DEMO_USER.username ?? '');
-  const [memberSince, setMemberSince] = useState(DEMO_USER.memberSince);
-  const [userBio, setUserBio] = useState(DEMO_USER.bio ?? '');
+  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
+  const [userInitial, setUserInitial] = useState('');
+  const [userUsername, setUserUsername] = useState('');
+  const [memberSince, setMemberSince] = useState('');
+  const [userBio, setUserBio] = useState('');
   const [givenCents, setGivenCents] = useState(0);
   const [causeCount, setCauseCount] = useState(0);
   const [donationCount, setDonationCount] = useState(0);
@@ -31,7 +30,7 @@ export default function ImpactPage() {
 
   useEffect(() => {
     async function load() {
-      let uid = 'demo-user-id';
+      let uid = '';
 
       const meRes = await fetch('/api/me');
       if (meRes.ok) {
@@ -199,11 +198,7 @@ export default function ImpactPage() {
               {userName}
             </div>
             <div style={{ fontSize: 13, color: 'var(--tx3)', fontWeight: 600, marginTop: 2 }}>
-              {userUsername ? `@${userUsername} · ` : ''}member since{' '}
-              {new Date(memberSince).toLocaleDateString('en-US', {
-                month: 'long',
-                year: 'numeric',
-              })}
+              {userUsername ? `@${userUsername} · ` : ''}{memberSince ? `member since ${new Date(memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}` : ''}
             </div>
             {userBio && (
               <p style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.5, margin: '8px 0' }}>

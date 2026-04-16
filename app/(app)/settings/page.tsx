@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { DEMO_USER } from '@/lib/mock-data';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 import type { MeResponse } from '@/app/api/me/route';
 
@@ -34,12 +33,12 @@ function loadSettings(): SettingsState {
 }
 
 function loadProfile(): ProfileState {
-  if (typeof window === 'undefined') return { name: DEMO_USER.name, email: DEMO_USER.email, bio: DEMO_USER.bio ?? '' };
+  if (typeof window === 'undefined') return { name: '', email: '', bio: '' };
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return { name: DEMO_USER.name, email: DEMO_USER.email, bio: DEMO_USER.bio ?? '' };
+  return { name: '', email: '', bio: '' };
 }
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {

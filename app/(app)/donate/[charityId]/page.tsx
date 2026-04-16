@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CreditCard } from 'lucide-react';
-import { CHARITIES, DEMO_USER } from '@/lib/mock-data';
+import { CHARITIES } from '@/lib/mock-data';
 import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
 import type { MeResponse } from '@/app/api/me/route';
 import { sendDonationReceipt } from '@/lib/resend';
@@ -42,8 +42,8 @@ export default function DonatePage() {
   const router = useRouter();
   const charity = CHARITIES.find((c) => c.id === params.charityId) ?? null;
 
-  const [userId, setUserId] = useState('demo-user-id');
-  const [userEmail, setUserEmail] = useState(DEMO_USER.email);
+  const [userId, setUserId] = useState('');
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
     fetch('/api/me')

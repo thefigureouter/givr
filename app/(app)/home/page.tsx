@@ -8,7 +8,7 @@ import QuickGive from '@/components/home/QuickGive';
 import StreakSection from '@/components/gamification/StreakSection';
 import CharityCard from '@/components/charity/CharityCard';
 import CharitySearchModal from '@/components/charity/CharitySearchModal';
-import { CHARITIES, SAMPLE_STREAK, DEMO_USER } from '@/lib/mock-data';
+import { CHARITIES } from '@/lib/mock-data';
 import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
 import type { MeResponse } from '@/app/api/me/route';
 import { calculateStreak } from '@/lib/streak-engine';
@@ -19,11 +19,11 @@ import type { Charity, BadgeType } from '@/types';
 const FEATURED = [CHARITIES[0], CHARITIES[5]]; // Feeding America, Doctors Without Borders
 
 export default function HomePage() {
-  const [userId, setUserId] = useState('demo-user-id');
-  const [userName, setUserName] = useState(DEMO_USER.name);
+  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
   const [activeCharity, setActiveCharity] = useState<Charity>(CHARITIES[0]);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [streak, setStreak] = useState(SAMPLE_STREAK.currentStreak);
+  const [streak, setStreak] = useState(0);
   const [given, setGiven] = useState(0);
   const [causeCount, setCauseCount] = useState(0);
   const [newBadges, setNewBadges] = useState<BadgeType[]>([]);
@@ -36,8 +36,8 @@ export default function HomePage() {
 
   useEffect(() => {
     async function load() {
-      let uid = 'demo-user-id';
-      let uname = DEMO_USER.name;
+      let uid = '';
+      let uname = '';
 
       // Server-side session read — never fails due to cookie visibility issues
       const meRes = await fetch('/api/me');

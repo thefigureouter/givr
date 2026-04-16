@@ -1,14 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { createDonation, getDonations } from '@/lib/mock-db';
 import { createPaymentIntent, confirmPayment } from '@/lib/stripe';
 
-export async function GET() {
-  // TODO: [SUPABASE] Authenticate user from session
-  const donations = await getDonations('demo-user-id');
+async function getRequestUserId(req: NextRequest): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return 'demo-user-id'; // demo mode: no Supabase config
+  const supabase = createServerClient(url, anonKey, {
+    cookies: { getAll() { return req.cookies.getAll(); }, setAll() {} },
+  });
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+export async function GET(req: NextRequest) {
+  const userId = await getRequestUserId(req);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const donations = await getDonations(userId);
   return NextResponse.json(donations);
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await getRequestUserId(req);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   let body: unknown;
   try {
     body = await req.json();
@@ -36,7 +52,7 @@ export async function POST(req: NextRequest) {
     await confirmPayment(paymentIntentId);
 
     const donation = await createDonation({
-      userId: 'demo-user-id', // TODO: [SUPABASE] Replace with session user ID
+      userId,
       charityId,
       amountCents,
       tipCents: 0,
