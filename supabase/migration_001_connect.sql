@@ -61,9 +61,19 @@ ALTER TABLE settlements ENABLE ROW LEVEL SECURITY;
 -- Service role writes; admins read via service role. No user-facing RLS needed.
 
 -- Back-fill FK now that settlements exists
-ALTER TABLE transactions
-  ADD CONSTRAINT IF NOT EXISTS fk_transactions_settlement
-  FOREIGN KEY (settlement_id) REFERENCES settlements(id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'fk_transactions_settlement'
+      AND table_name = 'transactions'
+  ) THEN
+    ALTER TABLE public.transactions
+      ADD CONSTRAINT fk_transactions_settlement
+      FOREIGN KEY (settlement_id) REFERENCES public.settlements(id);
+  END IF;
+END;
+$$;
 
 -- Index for batch queries
 CREATE INDEX IF NOT EXISTS idx_transactions_user_pending
