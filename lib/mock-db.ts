@@ -164,7 +164,7 @@ export async function getDonations(userId: string): Promise<Donation[]> {
       .select('*')
       .eq('user_id', userId)
       .order('donated_at', { ascending: false });
-    if (!error && data) return data.map((r) => donationFromRow(r as Record<string, unknown>));
+    if (!error && data) return data.map((r: Record<string, unknown>) => donationFromRow(r));
   }
   const store = getStore();
   return store.donations
@@ -307,7 +307,7 @@ export async function getBadges(userId: string): Promise<Badge[]> {
   const client = getClient();
   if (supabaseConfigured && client) {
     const { data, error } = await client.from('badges').select('*').eq('user_id', userId);
-    if (!error && data) return data.map((r) => badgeFromRow(r as Record<string, unknown>));
+    if (!error && data) return data.map((r: Record<string, unknown>) => badgeFromRow(r));
   }
   return getStore().badges.filter((b) => b.userId === userId);
 }
@@ -341,8 +341,8 @@ export async function getFeed(): Promise<FeedItem[]> {
       .order('created_at', { ascending: false })
       .limit(50);
     if (!error && data) {
-      return data.map((r) => {
-        const row = r as Record<string, unknown>;
+      return data.map((r: Record<string, unknown>) => {
+        const row = r;
         return {
           id: row.id as string,
           userId: row.user_id as string,
