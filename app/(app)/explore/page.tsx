@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import CharityCard from '@/components/charity/CharityCard';
+import CharitySearchModal from '@/components/charity/CharitySearchModal';
 import { CHARITIES } from '@/lib/mock-data';
 import type { CauseCategory } from '@/types';
 
@@ -20,8 +22,10 @@ const FILTERS: { label: string; emoji: string; value: CauseCategory | 'all' }[] 
 ];
 
 export default function ExplorePage() {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<CauseCategory | 'all'>('all');
+  const [modalOpen, setModalOpen] = useState(false);
 
   const filtered = CHARITIES.filter((c) => {
     const matchesFilter = activeFilter === 'all' || c.category === activeFilter;
@@ -33,112 +37,157 @@ export default function ExplorePage() {
   });
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      style={{ padding: '16px 16px 24px' }}
-    >
-      <h1
-        style={{
-          fontSize: 26,
-          fontWeight: 900,
-          color: 'var(--tx)',
-          margin: '0 0 16px',
-        }}
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        style={{ padding: '16px 16px 24px' }}
       >
-        Explore
-      </h1>
+        <h1 style={{ fontSize: 26, fontWeight: 900, color: 'var(--tx)', margin: '0 0 16px' }}>
+          Explore
+        </h1>
 
-      {/* Search */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          background: 'var(--sf)',
-          border: '1.5px solid var(--br)',
-          borderRadius: 14,
-          padding: '11px 14px',
-          marginBottom: 14,
-        }}
-      >
-        <Search size={16} color="var(--tx3)" />
-        <input
-          type="text"
-          placeholder="Search charities..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+        {/* Search */}
+        <div
           style={{
-            flex: 1,
-            border: 'none',
-            background: 'transparent',
-            outline: 'none',
-            fontSize: 14,
-            color: 'var(--tx)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: 'var(--sf)',
+            border: '1.5px solid var(--br)',
+            borderRadius: 14,
+            padding: '11px 14px',
+            marginBottom: 14,
           }}
-        />
-      </div>
+        >
+          <Search size={16} color="var(--tx3)" />
+          <input
+            type="text"
+            placeholder="Search charities..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{
+              flex: 1,
+              border: 'none',
+              background: 'transparent',
+              outline: 'none',
+              fontSize: 14,
+              color: 'var(--tx)',
+            }}
+          />
+        </div>
 
-      {/* Filter chips */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          overflowX: 'auto',
-          paddingBottom: 4,
-          marginBottom: 14,
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-        }}
-      >
-        {FILTERS.map((f) => (
+        {/* Filter chips */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            overflowX: 'auto',
+            paddingBottom: 4,
+            marginBottom: 14,
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setActiveFilter(f.value)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '8px 14px',
+                borderRadius: 999,
+                border: `1.5px solid ${activeFilter === f.value ? 'var(--green)' : 'var(--br)'}`,
+                background: activeFilter === f.value ? 'var(--gl)' : 'var(--sf)',
+                color: activeFilter === f.value ? 'var(--gd)' : 'var(--tx2)',
+                fontSize: 13,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                minHeight: 40,
+                transition: 'all 120ms',
+                flexShrink: 0,
+              }}
+            >
+              <span>{f.emoji}</span>
+              <span>{f.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Results */}
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px 0' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx2)' }}>
+              No charities found
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--tx3)', marginTop: 6, marginBottom: 20 }}>
+              {query ? `No results for "${query}"` : 'Try selecting a different category'}
+            </div>
+            <button
+              onClick={() => setModalOpen(true)}
+              style={{
+                padding: '12px 24px',
+                borderRadius: 14,
+                background: 'var(--green)',
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 700,
+              }}
+            >
+              Add a charity
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filtered.map((charity) => (
+              <CharityCard key={charity.id} charity={charity} variant="compact" />
+            ))}
+          </div>
+        )}
+
+        {/* Can't find them? — always visible at bottom */}
+        {filtered.length > 0 && (
           <button
-            key={f.value}
-            onClick={() => setActiveFilter(f.value)}
+            onClick={() => setModalOpen(true)}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
-              padding: '8px 14px',
-              borderRadius: 999,
-              border: `1.5px solid ${activeFilter === f.value ? 'var(--green)' : 'var(--br)'}`,
-              background: activeFilter === f.value ? 'var(--gl)' : 'var(--sf)',
-              color: activeFilter === f.value ? 'var(--gd)' : 'var(--tx2)',
-              fontSize: 13,
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              marginTop: 20,
+              padding: '14px',
+              borderRadius: 16,
+              border: '1.5px dashed var(--br2)',
+              background: 'var(--sf)',
+              fontSize: 14,
               fontWeight: 700,
-              whiteSpace: 'nowrap',
+              color: 'var(--tx2)',
               cursor: 'pointer',
-              minHeight: 40,
               transition: 'all 120ms',
-              flexShrink: 0,
             }}
           >
-            <span>{f.emoji}</span>
-            <span>{f.label}</span>
+            <Plus size={16} color="var(--tx3)" />
+            Can&apos;t find your charity? Add it
           </button>
-        ))}
-      </div>
+        )}
+      </motion.div>
 
-      {/* Results */}
-      {filtered.length === 0 ? (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '40px 0',
-            color: 'var(--tx3)',
-            fontSize: 14,
-          }}
-        >
-          No charities found. Try a different search.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtered.map((charity) => (
-            <CharityCard key={charity.id} charity={charity} variant="compact" />
-          ))}
-        </div>
-      )}
-    </motion.div>
+      {/* Modal — selecting a found charity goes to donate page */}
+      <CharitySearchModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        startUnclaimed
+        onSelect={(c) => {
+          setModalOpen(false);
+          router.push(`/donate/${c.id}`);
+        }}
+      />
+    </>
   );
 }

@@ -39,14 +39,12 @@ export default function QuickGive({
 }: QuickGiveProps) {
   const [selected, setSelected] = useState<Amount>(defaultAmount);
   const [pressing, setPressing] = useState(false);
-  const [tapCount, setTapCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
   const tapCountRef = useRef(0);
 
   function handleTap() {
     tapCountRef.current += 1;
     const n = tapCountRef.current;
-    setTapCount(n);
 
     const id = Date.now().toString();
     setNotifications((prev) => [{ id, amount: selected, charityName, tapNumber: n }, ...prev].slice(0, 3));

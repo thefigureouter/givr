@@ -1,35 +1,41 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { DEMO_USER } from '@/lib/mock-data';
 
 function SuccessContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const amount = parseInt(params.get('amount') ?? '0');
+  const amount = parseInt(params.get('amount') ?? '0', 10);
   const charityName = params.get('charity') ?? 'a charity';
   const impact = params.get('impact') ?? '';
-  const streak = parseInt(params.get('streak') ?? '0');
+  const streak = parseInt(params.get('streak') ?? '0', 10);
   const badge = params.get('badge') ?? '';
 
   const dollars = (amount / 100).toFixed(amount % 100 === 0 ? 0 : 2);
 
+  // Load persisted profile email if available
+  let displayEmail = DEMO_USER.email;
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('tapgive_profile');
+      if (saved) displayEmail = JSON.parse(saved).email ?? DEMO_USER.email;
+    } catch {}
+  }
+
   useEffect(() => {
-    const t = setTimeout(() => router.push('/home'), 4000);
-    return () => clearTimeout(t);
+    timerRef.current = setTimeout(() => router.push('/home'), 5000);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [router]);
 
-  const items = [
-    { delay: 0, content: 'check' },
-    { delay: 0.3, content: 'amount' },
-    { delay: 0.6, content: 'impact' },
-    { delay: 0.9, content: 'streak' },
-    ...(badge ? [{ delay: 1.2, content: 'badge' }] : []),
-    { delay: badge ? 1.5 : 1.2, content: 'buttons' },
-  ];
+  function cancel() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }
 
   return (
     <div
@@ -72,14 +78,7 @@ function SuccessContent() {
         transition={{ delay: 0.3 }}
         style={{ textAlign: 'center', marginBottom: 8 }}
       >
-        <div
-          style={{
-            fontSize: 58,
-            fontWeight: 900,
-            color: 'var(--tx)',
-            lineHeight: 1,
-          }}
-        >
+        <div style={{ fontSize: 58, fontWeight: 900, color: 'var(--tx)', lineHeight: 1 }}>
           ${dollars}
         </div>
         <div style={{ fontSize: 16, color: 'var(--tx2)', marginTop: 6, fontWeight: 600 }}>
@@ -117,9 +116,7 @@ function SuccessContent() {
         }}
       >
         <div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#CC7A10' }}>
-            🔥 Daily streak
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#CC7A10' }}>🔥 Daily streak</div>
           <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--tx)', marginTop: 2 }}>
             {streak} days
           </div>
@@ -160,7 +157,7 @@ function SuccessContent() {
         transition={{ delay: badge ? 1.5 : 1.2 }}
         style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 24, textAlign: 'center' }}
       >
-        📧 Receipt sent to alex@email.com
+        📧 Receipt sent to {displayEmail}
       </motion.p>
 
       {/* Buttons */}
@@ -172,6 +169,7 @@ function SuccessContent() {
       >
         <Link
           href="/home"
+          onClick={cancel}
           style={{
             flex: 1,
             padding: '14px',
@@ -188,7 +186,8 @@ function SuccessContent() {
           Done
         </Link>
         <Link
-          href="/home"
+          href="/explore"
+          onClick={cancel}
           style={{
             flex: 1,
             padding: '14px',

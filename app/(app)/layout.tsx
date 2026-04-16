@@ -1,17 +1,6 @@
-'use client';
-
-import { useState } from 'react';
 import BottomNav from '@/components/nav/BottomNav';
-import CharitySearchModal from '@/components/charity/CharitySearchModal';
-import type { Charity } from '@/types';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [searchOpen, setSearchOpen] = useState(false);
-
-  function handleCharitySelect(_charity: Charity) {
-    setSearchOpen(false);
-  }
-
   return (
     <div
       style={{
@@ -23,12 +12,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }}
     >
       <main style={{ paddingBottom: 90 }}>{children}</main>
-      <BottomNav onFabClick={() => setSearchOpen(true)} />
-      <CharitySearchModal
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSelect={handleCharitySelect}
-      />
+      <BottomNav />
     </div>
   );
 }

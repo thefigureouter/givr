@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, Heart, BarChart2, Plus } from 'lucide-react';
+import { Home, Compass, Heart, BarChart2 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/home', label: 'Home', Icon: Home },
@@ -11,11 +11,7 @@ const NAV_ITEMS = [
   { href: '/impact', label: 'Impact', Icon: BarChart2 },
 ];
 
-interface BottomNavProps {
-  onFabClick?: () => void;
-}
-
-export default function BottomNav({ onFabClick }: BottomNavProps) {
+export default function BottomNav() {
   const pathname = usePathname();
 
   return (
@@ -37,38 +33,15 @@ export default function BottomNav({ onFabClick }: BottomNavProps) {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {NAV_ITEMS.slice(0, 2).map(({ href, label, Icon }) => (
-        <NavItem key={href} href={href} label={label} Icon={Icon} active={pathname === href} />
-      ))}
-
-      {/* Center FAB */}
-      <button
-        onClick={onFabClick}
-        aria-label="Give now"
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          background: 'var(--green)',
-          boxShadow: '0 6px 20px rgba(24,184,90,0.35)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: -18,
-          flexShrink: 0,
-          transition: 'transform 120ms ease',
-        }}
-        onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.92)')}
-        onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-        onTouchStart={(e) => (e.currentTarget.style.transform = 'scale(0.92)')}
-        onTouchEnd={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-      >
-        <Plus size={24} color="white" strokeWidth={2.5} />
-      </button>
-
-      {NAV_ITEMS.slice(2).map(({ href, label, Icon }) => (
-        <NavItem key={href} href={href} label={label} Icon={Icon} active={pathname === href} />
-      ))}
+      {NAV_ITEMS.map(({ href, label, Icon }) => {
+        const active =
+          pathname === href ||
+          (href === '/explore' && pathname.startsWith('/donate')) ||
+          (href === '/impact' && pathname === '/history');
+        return (
+          <NavItem key={href} href={href} label={label} Icon={Icon} active={active} />
+        );
+      })}
     </nav>
   );
 }
@@ -92,7 +65,7 @@ function NavItem({
         flexDirection: 'column',
         alignItems: 'center',
         gap: 4,
-        minWidth: 48,
+        flex: 1,
         minHeight: 48,
         justifyContent: 'center',
         textDecoration: 'none',

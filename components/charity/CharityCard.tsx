@@ -70,9 +70,7 @@ export default function CharityCard({ charity, variant = 'compact' }: CharityCar
           {/* Bottom row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span className="pill pgr">{charity.category.replace('_', ' ')}</span>
-            <Link
-              href={`/donate/${charity.id}`}
-              onClick={(e) => e.stopPropagation()}
+            <span
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -83,11 +81,10 @@ export default function CharityCard({ charity, variant = 'compact' }: CharityCar
                 color: '#fff',
                 fontSize: 13,
                 fontWeight: 700,
-                textDecoration: 'none',
               }}
             >
               Give <ChevronRight size={13} />
-            </Link>
+            </span>
           </div>
         </div>
       </Link>

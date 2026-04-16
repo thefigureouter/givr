@@ -8,13 +8,12 @@ import QuickGive from '@/components/home/QuickGive';
 import StreakSection from '@/components/gamification/StreakSection';
 import CharityCard from '@/components/charity/CharityCard';
 import CharitySearchModal from '@/components/charity/CharitySearchModal';
-import { CHARITIES, SAMPLE_STREAK } from '@/lib/mock-data';
-import { createDonation, getStreak, updateStreak, getDonations, awardBadges } from '@/lib/mock-db';
+import { CHARITIES, SAMPLE_STREAK, DEMO_USER } from '@/lib/mock-data';
+import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
 import { calculateStreak } from '@/lib/streak-engine';
 import { checkForNewBadges } from '@/lib/badge-engine';
-import { totalCents, uniqueCharityIds } from '@/lib/utils';
+import { totalCents, uniqueCharityIds, randomId } from '@/lib/utils';
 import type { Charity, BadgeType } from '@/types';
-import { randomId } from '@/lib/utils';
 
 const FEATURED = [CHARITIES[0], CHARITIES[5]]; // Feeding America, Doctors Without Borders
 
@@ -25,6 +24,7 @@ export default function HomePage() {
   const [given, setGiven] = useState(0);
   const [causeCount, setCauseCount] = useState(0);
   const [newBadges, setNewBadges] = useState<BadgeType[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const hour = new Date().getHours();
   const greeting =
@@ -32,19 +32,22 @@ export default function HomePage() {
 
   useEffect(() => {
     async function load() {
-      const [streakData, donations] = await Promise.all([
-        getStreak('demo-user-id'),
-        getDonations('demo-user-id'),
-      ]);
-      if (streakData) setStreak(streakData.currentStreak);
-      setGiven(totalCents(donations));
-      setCauseCount(uniqueCharityIds(donations).length);
+      try {
+        const [streakData, donations] = await Promise.all([
+          getStreak('demo-user-id'),
+          getDonations('demo-user-id'),
+        ]);
+        if (streakData) setStreak(streakData.currentStreak);
+        setGiven(totalCents(donations));
+        setCauseCount(uniqueCharityIds(donations).length);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, []);
 
-  async function handleDonate(amount: string, amountCents: number) {
-    // Create donation record
+  async function handleDonate(_amount: string, amountCents: number) {
     await createDonation({
       userId: 'demo-user-id',
       charityId: activeCharity.id,
@@ -61,7 +64,6 @@ export default function HomePage() {
       donatedAt: new Date().toISOString(),
     });
 
-    // Update streak
     const streakData = await getStreak('demo-user-id');
     const { newStreak } = calculateStreak(
       streakData?.lastDonationDate ?? null,
@@ -70,15 +72,13 @@ export default function HomePage() {
     await updateStreak('demo-user-id', newStreak, streakData?.longestStreak ?? 0, new Date());
     setStreak(newStreak);
 
-    // Refresh totals
     const donations = await getDonations('demo-user-id');
-    const newTotal = totalCents(donations);
-    const newCauses = uniqueCharityIds(donations).length;
-    setGiven(newTotal);
-    setCauseCount(newCauses);
+    setGiven(totalCents(donations));
+    setCauseCount(uniqueCharityIds(donations).length);
 
-    // Check badges
-    const badges = checkForNewBadges(donations, newStreak, []);
+    const existingBadges = await getBadges('demo-user-id');
+    const earnedTypes = existingBadges.map((b) => b.badgeType);
+    const badges = checkForNewBadges(donations, newStreak, earnedTypes);
     if (badges.length > 0) {
       await awardBadges('demo-user-id', badges);
       setNewBadges(badges);
@@ -120,7 +120,7 @@ export default function HomePage() {
             fontWeight: 800,
           }}
         >
-          A
+          {DEMO_USER.name.charAt(0)}
         </div>
       </div>
 
@@ -138,7 +138,7 @@ export default function HomePage() {
             lineHeight: 1.15,
           }}
         >
-          Ready to give today, Alex?
+          Ready to give today, {DEMO_USER.name.split(' ')[0]}?
         </h1>
       </div>
 
@@ -159,14 +159,31 @@ export default function HomePage() {
           style={{ marginTop: 10 }}
         >
           <p style={{ fontSize: 14, fontWeight: 800, color: '#CC7A10', margin: 0 }}>
-            🏆 Badge earned: {newBadges[0].replace('_', ' ')}
+            🏆 Badge earned: {newBadges[0].replace(/_/g, ' ')}
           </p>
         </motion.div>
       )}
 
       {/* Streak section */}
       <div style={{ marginTop: 12 }}>
-        <StreakSection currentStreak={streak} totalCents={given} causeCount={causeCount} />
+        {loading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {[0, 1].map((i) => (
+              <div
+                key={i}
+                style={{
+                  height: 120,
+                  borderRadius: 20,
+                  background: 'var(--sf2)',
+                  border: '1.5px solid var(--br)',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <StreakSection currentStreak={streak} totalCents={given} causeCount={causeCount} />
+        )}
       </div>
 
       {/* Featured */}
@@ -177,7 +194,7 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Charity search modal */}
+      {/* Charity search modal — updates QuickGive target */}
       <CharitySearchModal
         open={searchOpen}
         onClose={() => setSearchOpen(false)}

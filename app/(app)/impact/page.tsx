@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Settings } from 'lucide-react';
+
 import { getDonations, getBadges, getStreak } from '@/lib/mock-db';
 import { BADGES } from '@/lib/badge-engine';
 import { totalCents, uniqueCharityIds } from '@/lib/utils';
@@ -18,6 +20,7 @@ export default function ImpactPage() {
   const [donationCount, setDonationCount] = useState(0);
   const [streak, setStreak] = useState(0);
   const [earnedBadges, setEarnedBadges] = useState<Badge['badgeType'][]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -31,10 +34,12 @@ export default function ImpactPage() {
       setDonationCount(donations.length);
       setEarnedBadges(badges.map((b) => b.badgeType));
       if (streakData) setStreak(streakData.currentStreak);
+      setLoading(false);
     }
     load();
   }, []);
 
+  const router = useRouter();
   const dollars = (givenCents / 100).toFixed(0);
 
   return (
@@ -62,6 +67,25 @@ export default function ImpactPage() {
         </Link>
       </div>
 
+      {/* Loading skeleton */}
+      {loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 14 }}>
+          {[120, 80, 100].map((h, i) => (
+            <div
+              key={i}
+              style={{
+                height: h,
+                borderRadius: 20,
+                background: 'var(--sf)',
+                border: '1.5px solid var(--br)',
+                animation: 'pulse 1.5s ease-in-out infinite',
+                animationDelay: `${i * 0.1}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Profile hero card */}
       <div
         className="card"
@@ -87,6 +111,7 @@ export default function ImpactPage() {
           />
           {/* Edit button */}
           <button
+            onClick={() => router.push('/settings')}
             style={{
               position: 'absolute',
               bottom: 10,
