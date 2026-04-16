@@ -39,8 +39,8 @@ export default function SignupPage() {
       return;
     }
 
-    // Demo mode — go straight to home
-    router.push('/home');
+    // Demo mode — go to onboarding
+    router.push('/onboarding');
   }
 
   if (verificationSent) {

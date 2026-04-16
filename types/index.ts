@@ -1,4 +1,10 @@
 export type PrivacyMode = 'PUBLIC' | 'FRIENDS' | 'PRIVATE';
+export type GivingMode = 'budget' | 'open' | 'intentional';
+export type RemainderPreference = 'top_charity' | 'split_even' | 'rollover';
+export type TransactionType = 'tap' | 'one_time' | 'budget_remainder';
+export type TransactionStatus = 'pending' | 'settled' | 'failed';
+export type SettlementStatus = 'pending' | 'completed' | 'failed';
+export type OrgType = '501c3' | 'mutual_aid' | 'personal' | 'other';
 export type DonationStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED';
 export type VerificationStatus = 'PENDING' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED';
 export type BadgeType =
@@ -41,6 +47,9 @@ export interface Charity {
   impactMetricLabel: string;
   impactPerDollar: number;
   stripeAccountId?: string;
+  ein?: string;
+  orgType?: OrgType;
+  taxDeductible?: boolean;
 }
 
 export interface Donation {
@@ -73,6 +82,45 @@ export interface UserProfile {
   bio?: string;
   username: string;
   memberSince: string;
+  // Stripe Connect / giving mode fields
+  stripeCustomerId?: string;
+  stripePaymentMethodId?: string;
+  givingMode?: GivingMode;
+  monthlyBudgetCents?: number;
+  remainderPreference?: RemainderPreference;
+  weeklyAlertCents?: number;
+  onboardingComplete?: boolean;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  charityId: string;
+  amountCents: number;
+  type: TransactionType;
+  status: TransactionStatus;
+  stripePaymentIntentId?: string;
+  settlementId?: string;
+  createdAt: string;
+}
+
+export interface Settlement {
+  id: string;
+  charityId: string;
+  totalCents: number;
+  stripeTransferId?: string;
+  periodStart: string;
+  periodEnd: string;
+  status: SettlementStatus;
+  createdAt: string;
+}
+
+export interface UserCharityPreference {
+  id: number;
+  userId: string;
+  charityId: string;
+  weight: number;
+  createdAt: string;
 }
 
 export interface Streak {
