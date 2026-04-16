@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { getBrowserSupabase, supabaseBrowserConfigured } from '@/lib/supabase-browser';
+import { getBrowserSupabase, getAuthUser, supabaseBrowserConfigured } from '@/lib/supabase-browser';
 import type { GivingMode, RemainderPreference } from '@/types';
 
 type Step = 'mode' | 'budget' | 'card' | 'done';
@@ -106,16 +106,14 @@ export default function OnboardingPage() {
   async function saveMode() {
     setSaving(true);
     try {
-      const client = getBrowserSupabase();
-      if (client) {
-        const { data: { user } } = await client.auth.getUser();
-        if (user) {
-          await client.from('profiles').update({
-            giving_mode: mode,
-            monthly_budget_cents: mode === 'budget' ? budgetCents : null,
-            remainder_preference: remainder,
-          }).eq('id', user.id);
-        }
+      const user = await getAuthUser();
+      if (user) {
+        const client = getBrowserSupabase();
+        await client!.from('profiles').update({
+          giving_mode: mode,
+          monthly_budget_cents: mode === 'budget' ? budgetCents : null,
+          remainder_preference: remainder,
+        }).eq('id', user.id);
       }
     } finally {
       setSaving(false);
@@ -126,15 +124,13 @@ export default function OnboardingPage() {
   async function saveBudget() {
     setSaving(true);
     try {
-      const client = getBrowserSupabase();
-      if (client) {
-        const { data: { user } } = await client.auth.getUser();
-        if (user) {
-          await client.from('profiles').update({
-            monthly_budget_cents: budgetCents,
-            remainder_preference: remainder,
-          }).eq('id', user.id);
-        }
+      const user = await getAuthUser();
+      if (user) {
+        const client = getBrowserSupabase();
+        await client!.from('profiles').update({
+          monthly_budget_cents: budgetCents,
+          remainder_preference: remainder,
+        }).eq('id', user.id);
       }
     } finally {
       setSaving(false);
@@ -172,12 +168,10 @@ export default function OnboardingPage() {
 
     const pm = setupIntent?.payment_method;
     if (typeof pm === 'string') {
-      const client = getBrowserSupabase();
-      if (client) {
-        const { data: { user } } = await client.auth.getUser();
-        if (user) {
-          await client.from('profiles').update({ stripe_payment_method_id: pm }).eq('id', user.id);
-        }
+      const user = await getAuthUser();
+      if (user) {
+        const client = getBrowserSupabase();
+        await client!.from('profiles').update({ stripe_payment_method_id: pm }).eq('id', user.id);
       }
     }
 
@@ -187,12 +181,10 @@ export default function OnboardingPage() {
   }
 
   async function markComplete() {
-    const client = getBrowserSupabase();
-    if (client) {
-      const { data: { user } } = await client.auth.getUser();
-      if (user) {
-        await client.from('profiles').update({ onboarding_complete: true }).eq('id', user.id);
-      }
+    const user = await getAuthUser();
+    if (user) {
+      const client = getBrowserSupabase();
+      await client!.from('profiles').update({ onboarding_complete: true }).eq('id', user.id);
     }
     setTimeout(() => setStep('done'), 800);
   }

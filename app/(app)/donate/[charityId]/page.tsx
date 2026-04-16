@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CreditCard } from 'lucide-react';
 import { CHARITIES, DEMO_USER } from '@/lib/mock-data';
 import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
-import { getBrowserSupabase } from '@/lib/supabase-browser';
+import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
 import { sendDonationReceipt } from '@/lib/resend';
 import { calculateStreak } from '@/lib/streak-engine';
 import { checkForNewBadges } from '@/lib/badge-engine';
@@ -45,9 +45,7 @@ export default function DonatePage() {
   const [userId, setUserId] = useState('demo-user-id');
 
   useEffect(() => {
-    const client = getBrowserSupabase();
-    if (!client) return;
-    client.auth.getUser().then(({ data: { user } }) => {
+    getAuthUser().then((user) => {
       if (user) setUserId(user.id);
     });
   }, []);
@@ -173,11 +171,8 @@ export default function DonatePage() {
       // Send receipt
       let userEmail = DEMO_USER.email;
       try {
-        const client = getBrowserSupabase();
-        if (client) {
-          const { data: { user } } = await client.auth.getUser();
-          if (user?.email) userEmail = user.email;
-        }
+        const user = await getAuthUser();
+        if (user?.email) userEmail = user.email;
       } catch {}
       await sendDonationReceipt(userEmail, donation, charity);
 

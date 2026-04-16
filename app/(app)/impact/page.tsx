@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Settings } from 'lucide-react';
 
 import { getDonations, getBadges, getStreak } from '@/lib/mock-db';
-import { getBrowserSupabase } from '@/lib/supabase-browser';
+import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
 import { BADGES } from '@/lib/badge-engine';
 import { totalCents, uniqueCharityIds } from '@/lib/utils';
 import { DEMO_USER } from '@/lib/mock-data';
@@ -33,11 +33,11 @@ export default function ImpactPage() {
     async function load() {
       let uid = 'demo-user-id';
 
-      const client = getBrowserSupabase();
-      if (client) {
-        const { data: { user } } = await client.auth.getUser();
-        if (user) {
-          uid = user.id;
+      const user = await getAuthUser();
+      if (user) {
+        uid = user.id;
+        const client = getBrowserSupabase();
+        if (client) {
           const { data: profile } = await client
             .from('profiles')
             .select('name, username, member_since, bio')

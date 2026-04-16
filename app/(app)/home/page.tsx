@@ -10,7 +10,7 @@ import CharityCard from '@/components/charity/CharityCard';
 import CharitySearchModal from '@/components/charity/CharitySearchModal';
 import { CHARITIES, SAMPLE_STREAK, DEMO_USER } from '@/lib/mock-data';
 import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
-import { getBrowserSupabase } from '@/lib/supabase-browser';
+import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
 import { calculateStreak } from '@/lib/streak-engine';
 import { checkForNewBadges } from '@/lib/badge-engine';
 import { totalCents, uniqueCharityIds, randomId } from '@/lib/utils';
@@ -40,23 +40,21 @@ export default function HomePage() {
       let uname = DEMO_USER.name;
 
       // Try to get the real session user
-      const client = getBrowserSupabase();
-      if (client) {
-        const { data: { user } } = await client.auth.getUser();
-        if (user) {
-          uid = user.id;
-          // Prefer name from profile table; fall back to auth metadata
-          const { data: profile } = await client
-            .from('profiles')
-            .select('name')
-            .eq('id', uid)
-            .single();
-          uname =
-            (profile as { name: string } | null)?.name ??
-            (user.user_metadata?.name as string | undefined) ??
-            user.email ??
-            DEMO_USER.name;
-        }
+      const user = await getAuthUser();
+      if (user) {
+        uid = user.id;
+        // Prefer name from profile table; fall back to auth metadata
+        const client = getBrowserSupabase();
+        const { data: profile } = await client!
+          .from('profiles')
+          .select('name')
+          .eq('id', uid)
+          .single();
+        uname =
+          (profile as { name: string } | null)?.name ??
+          (user.user_metadata?.name as string | undefined) ??
+          user.email ??
+          DEMO_USER.name;
       }
 
       setUserId(uid);

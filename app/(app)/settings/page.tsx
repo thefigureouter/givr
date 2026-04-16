@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronRight, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DEMO_USER } from '@/lib/mock-data';
-import { getBrowserSupabase } from '@/lib/supabase-browser';
+import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
 
 const SETTINGS_KEY = 'tapgive_settings';
 const PROFILE_KEY = 'tapgive_profile';
@@ -174,11 +174,10 @@ export default function SettingsPage() {
 
   // Load the real user's profile from Supabase on mount
   useEffect(() => {
-    const client = getBrowserSupabase();
-    if (!client) return;
-    client.auth.getUser().then(async ({ data: { user } }) => {
+    getAuthUser().then(async (user) => {
       if (!user) return;
-      const { data } = await client
+      const client = getBrowserSupabase();
+      const { data } = await client!
         .from('profiles')
         .select('name, email')
         .eq('id', user.id)

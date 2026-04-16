@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getDonations } from '@/lib/mock-db';
-import { getBrowserSupabase } from '@/lib/supabase-browser';
+import { getBrowserSupabase, getAuthUser } from '@/lib/supabase-browser';
 import { CHARITIES, DEMO_USER } from '@/lib/mock-data';
 import { groupByMonth, totalCents } from '@/lib/utils';
 import type { Donation } from '@/types';
@@ -22,23 +22,21 @@ export default function HistoryPage() {
   useEffect(() => {
     async function load() {
       let uid = 'demo-user-id';
-      const client = getBrowserSupabase();
-      if (client) {
-        const { data: { user } } = await client.auth.getUser();
-        if (user) {
-          uid = user.id;
-          const { data: profile } = await client
-            .from('profiles')
-            .select('name')
-            .eq('id', uid)
-            .single();
-          setUserName(
-            (profile as { name?: string } | null)?.name ??
-            (user.user_metadata?.name as string | undefined) ??
-            user.email ??
-            DEMO_USER.name
-          );
-        }
+      const user = await getAuthUser();
+      if (user) {
+        uid = user.id;
+        const client = getBrowserSupabase();
+        const { data: profile } = await client!
+          .from('profiles')
+          .select('name')
+          .eq('id', uid)
+          .single();
+        setUserName(
+          (profile as { name?: string } | null)?.name ??
+          (user.user_metadata?.name as string | undefined) ??
+          user.email ??
+          DEMO_USER.name
+        );
       }
       getDonations(uid).then(setDonations);
     }
