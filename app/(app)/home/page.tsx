@@ -9,7 +9,7 @@ import StreakSection from '@/components/gamification/StreakSection';
 import CharityCard from '@/components/charity/CharityCard';
 import CharitySearchModal from '@/components/charity/CharitySearchModal';
 import { CHARITIES } from '@/lib/mock-data';
-import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
+import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges, addFeedItem } from '@/lib/mock-db';
 import type { MeResponse } from '@/app/api/me/route';
 import { calculateStreak } from '@/lib/streak-engine';
 import { checkForNewBadges } from '@/lib/badge-engine';
@@ -21,6 +21,7 @@ const FEATURED = [CHARITIES[0], CHARITIES[5]]; // Feeding America, Doctors Witho
 export default function HomePage() {
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
+  const [userCityRegion, setUserCityRegion] = useState<string | null>(null);
   const [activeCharity, setActiveCharity] = useState<Charity>(CHARITIES[0]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [streak, setStreak] = useState(0);
@@ -43,7 +44,7 @@ export default function HomePage() {
       const meRes = await fetch('/api/me');
       if (meRes.ok) {
         const me = await meRes.json() as MeResponse;
-        if (me.id) { uid = me.id; uname = me.name; }
+        if (me.id) { uid = me.id; uname = me.name; setUserCityRegion(me.cityRegion); }
       }
 
       setUserId(uid);
@@ -65,7 +66,7 @@ export default function HomePage() {
   }, []);
 
   async function handleDonate(_amount: string, amountCents: number) {
-    await createDonation({
+    const donation = await createDonation({
       userId,
       charityId: activeCharity.id,
       amountCents,
@@ -79,6 +80,19 @@ export default function HomePage() {
       fundingSource: 'quick-give',
       stripePaymentIntentId: 'pi_mock_' + randomId(),
       donatedAt: new Date().toISOString(),
+    });
+
+    // Write to feed
+    await addFeedItem({
+      userId,
+      donationId: donation.id,
+      charityId: activeCharity.id,
+      displayName: userName,
+      amountCents,
+      charity: activeCharity,
+      cityRegion: userCityRegion ?? '',
+      privacyMode: 'PUBLIC',
+      createdAt: new Date().toISOString(),
     });
 
     const streakData = await getStreak(userId);

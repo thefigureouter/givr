@@ -168,16 +168,21 @@ export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<SettingsState>(loadSettings);
   const [profile, setProfile] = useState<ProfileState>(loadProfile);
+  const [userId, setUserId] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [editDraft, setEditDraft] = useState<ProfileState>(profile);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Load the real user's profile from server on mount
   useEffect(() => {
     fetch('/api/me')
       .then((r) => r.ok ? r.json() as Promise<MeResponse> : null)
       .then((me) => {
-        if (me?.id) setProfile({ name: me.name, email: me.email, bio: me.bio });
+        if (me?.id) {
+          setUserId(me.id);
+          setProfile({ name: me.name, email: me.email, bio: me.bio });
+        }
       });
   }, []);
 
@@ -187,9 +192,20 @@ export default function SettingsPage() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   }
 
-  function saveProfile() {
+  async function saveProfile() {
+    setSaving(true);
     setProfile(editDraft);
+    // Persist to Supabase if user is authenticated
+    if (userId) {
+      await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editDraft.name, bio: editDraft.bio }),
+      });
+    }
+    // Keep local cache in sync
     localStorage.setItem(PROFILE_KEY, JSON.stringify(editDraft));
+    setSaving(false);
     setEditOpen(false);
   }
 
@@ -446,18 +462,18 @@ export default function SettingsPage() {
 
               <button
                 onClick={saveProfile}
-                disabled={!editDraft.name.trim() || !editDraft.email.trim()}
+                disabled={saving || !editDraft.name.trim() || !editDraft.email.trim()}
                 style={{
                   width: '100%',
                   padding: '14px',
                   borderRadius: 14,
-                  background: !editDraft.name.trim() || !editDraft.email.trim() ? 'var(--br2)' : 'var(--green)',
+                  background: saving || !editDraft.name.trim() || !editDraft.email.trim() ? 'var(--br2)' : 'var(--green)',
                   color: '#fff',
                   fontSize: 16,
                   fontWeight: 800,
                 }}
               >
-                Save changes
+                {saving ? 'Saving…' : 'Save changes'}
               </button>
             </motion.div>
           </>

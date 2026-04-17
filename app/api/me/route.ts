@@ -89,3 +89,40 @@ export async function GET(req: NextRequest) {
     cityRegion: p.city_region,
   });
 }
+
+export async function PATCH(req: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return NextResponse.json({ ok: true }); // demo mode: no-op
+  }
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() { return req.cookies.getAll(); },
+      setAll() {},
+    },
+  });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  let body: unknown;
+  try { body = await req.json(); } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { name, bio, username, cityRegion } = body as Record<string, unknown>;
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (typeof name === 'string' && name.trim()) updates.name = name.trim();
+  if (typeof bio === 'string') updates.bio = bio.trim();
+  if (typeof username === 'string') updates.username = username.trim() || null;
+  if (typeof cityRegion === 'string') updates.city_region = cityRegion.trim() || null;
+
+  const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}

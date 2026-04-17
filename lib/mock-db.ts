@@ -367,6 +367,7 @@ export async function addFeedItem(item: Omit<FeedItem, 'id'>): Promise<void> {
   if (supabaseConfigured && client) {
     await client.from('feed_items').insert({
       user_id: item.userId,
+      donation_id: item.donationId || null,
       display_name: item.displayName,
       amount_cents: item.amountCents,
       charity_id: item.charity.id,

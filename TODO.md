@@ -8,11 +8,13 @@
 - [ ] Test end-to-end: tap → payment intent → confirm → receipt email → transaction row
 
 ## Priority 2: Persist User Data to Supabase
-- [ ] Profile edits on Settings page must upsert to `profiles` table (currently saves to localStorage only)
-- [ ] `getDonations()` / `createDonation()` in `lib/mock-db.ts` must write/read from `donations` table for real users
-- [ ] `getStreak()` / `updateStreak()` must persist to `streaks` table
-- [ ] `getBadges()` / `awardBadges()` must persist to `badges` table
-- [ ] Wire `/api/donations/summary` to return live data from Supabase
+- [x] Profile edits on Settings page now call `PATCH /api/me` → upserts to `profiles` table
+- [x] `getDonations()` / `createDonation()` already wired to Supabase `donations` table via mock-db
+- [x] `getStreak()` / `updateStreak()` already wired to `streaks` table via mock-db
+- [x] `getBadges()` / `awardBadges()` already wired to `badges` table via mock-db
+- [x] `/api/donations/summary` now uses server-side auth (no more hardcoded demo-user-id)
+- [x] `createDonation` on home + donate pages now calls `addFeedItem` to populate live feed
+- [ ] Run `migration_004_profile_columns_and_feed.sql` in Supabase to add giving_mode + donation_id columns
 
 ## Priority 3: Charity Detail & Discovery
 - [ ] Charity detail page (`/donate/[charityId]`) needs real bio, mission statement, 501(c)(3) status, tax-deductible indicator, and impact stats

@@ -6,15 +6,18 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ─── Profiles ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS profiles (
-  id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  name         TEXT NOT NULL DEFAULT '',
-  email        TEXT NOT NULL DEFAULT '',
-  privacy_mode TEXT NOT NULL DEFAULT 'PUBLIC' CHECK (privacy_mode IN ('PUBLIC','FRIENDS','PRIVATE')),
-  city_region  TEXT,
-  bio          TEXT,
-  username     TEXT UNIQUE,
-  member_since TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                     UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name                   TEXT NOT NULL DEFAULT '',
+  email                  TEXT NOT NULL DEFAULT '',
+  privacy_mode           TEXT NOT NULL DEFAULT 'PUBLIC' CHECK (privacy_mode IN ('PUBLIC','FRIENDS','PRIVATE')),
+  city_region            TEXT,
+  bio                    TEXT,
+  username               TEXT UNIQUE,
+  giving_mode            TEXT DEFAULT 'intentional' CHECK (giving_mode IN ('intentional','budget')),
+  monthly_budget_cents   INT,
+  remainder_preference   TEXT DEFAULT 'rollover' CHECK (remainder_preference IN ('top_charity','split_even','rollover')),
+  member_since           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -113,6 +116,7 @@ CREATE POLICY "Users can insert own badges" ON badges FOR INSERT WITH CHECK (aut
 CREATE TABLE IF NOT EXISTS feed_items (
   id            TEXT PRIMARY KEY DEFAULT ('feed_' || gen_random_uuid()::text),
   user_id       UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  donation_id   TEXT REFERENCES donations(id) ON DELETE SET NULL,
   display_name  TEXT NOT NULL,
   amount_cents  INT NOT NULL,
   charity_id    TEXT NOT NULL REFERENCES charities(id),

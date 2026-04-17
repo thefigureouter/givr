@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, CreditCard } from 'lucide-react';
 import { CHARITIES } from '@/lib/mock-data';
-import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges } from '@/lib/mock-db';
+import { createDonation, getStreak, updateStreak, getDonations, getBadges, awardBadges, addFeedItem } from '@/lib/mock-db';
 import type { MeResponse } from '@/app/api/me/route';
 import { sendDonationReceipt } from '@/lib/resend';
 import { calculateStreak } from '@/lib/streak-engine';
@@ -44,11 +44,20 @@ export default function DonatePage() {
 
   const [userId, setUserId] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userName, setUserName] = useState('');
+  const [userCityRegion, setUserCityRegion] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/me')
       .then((r) => r.ok ? r.json() as Promise<MeResponse> : null)
-      .then((me) => { if (me?.id) { setUserId(me.id); setUserEmail(me.email); } });
+      .then((me) => {
+        if (me?.id) {
+          setUserId(me.id);
+          setUserEmail(me.email);
+          setUserName(me.name);
+          setUserCityRegion(me.cityRegion);
+        }
+      });
   }, []);
 
   const [step, setStep] = useState<Step>('amount');
@@ -151,6 +160,21 @@ export default function DonatePage() {
         stripePaymentIntentId: paymentIntentId,
         donatedAt: new Date().toISOString(),
       });
+
+      // Write to feed (fire-and-forget)
+      if (isPublic) {
+        addFeedItem({
+          userId,
+          donationId: donation.id,
+          charityId: charity.id,
+          displayName: userName,
+          amountCents: effectiveCents,
+          charity,
+          cityRegion: userCityRegion ?? '',
+          privacyMode: 'PUBLIC',
+          createdAt: new Date().toISOString(),
+        });
+      }
 
       // Update streak
       const streakData = await getStreak(userId);
