@@ -1,11 +1,14 @@
 # TapGive — Development Roadmap
 
 ## Priority 1: Real Payments (Critical Path)
-- [ ] Wire Stripe Elements to real payment intent flow on `/donate/[charityId]`
-- [ ] Replace `lib/stripe.ts` mock with real Stripe SDK calls
-- [ ] Confirm webhook handler (`/api/webhook`) verifies Stripe signature and writes to `transactions` table
-- [ ] Tap-to-give on `/home` QuickGive must write to `transactions` table (currently writes to mock-db only)
-- [ ] Test end-to-end: tap → payment intent → confirm → receipt email → transaction row
+- [x] Stripe Elements wired on `/donate/[charityId]` — shows real PaymentElement when `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` set
+- [x] `lib/stripe.ts` uses real Stripe SDK when `STRIPE_SECRET_KEY` set; mocks otherwise
+- [x] `/api/payment-intent` now injects `userId` + `privacyMode` into PI metadata (webhook can attribute payments)
+- [x] Webhook handler verifies Stripe signature, handles `payment_intent.succeeded` + `payment_intent.payment_failed`
+- [x] `transactions` table added to schema + migration_005 (run in Supabase to activate)
+- [x] `stripe_customer_id` + `stripe_payment_method_id` columns added to profiles
+- [ ] Tap-to-give on `/home` QuickGive: write pending transaction row to `transactions` table before Stripe confirms
+- [ ] End-to-end test with real Stripe keys: set `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 ## Priority 2: Persist User Data to Supabase
 - [x] Profile edits on Settings page now call `PATCH /api/me` → upserts to `profiles` table
@@ -17,10 +20,12 @@
 - [ ] Run `migration_004_profile_columns_and_feed.sql` in Supabase to add giving_mode + donation_id columns
 
 ## Priority 3: Charity Detail & Discovery
-- [ ] Charity detail page (`/donate/[charityId]`) needs real bio, mission statement, 501(c)(3) status, tax-deductible indicator, and impact stats
-- [ ] "Add a charity" flow must insert row to `charities` table (currently client-side only)
-- [ ] Unclaimed charity gift: show amount input + "Send unclaimed gift" CTA
-- [ ] Explore/search page: connect to real `charities` table rows instead of `CHARITIES` constant
+- [x] Charity detail card added to `/donate/[charityId]` — shows mission, tax-deductible badge, 501(c)(3), EIN, website link
+- [x] `POST /api/charities` inserts PENDING charity row to Supabase (service role)
+- [x] Unclaimed gift flow: name + amount + website inputs → `POST /api/charities` → confirmation screen
+- [x] Explore page fetches from `/api/charities` (Supabase-backed) with mock-data fallback + loading skeletons
+- [x] CharitySearchModal fetches from `/api/charities` on open; falls back to mock-data
+- [ ] Seed real charity rows to `charities` table in Supabase (currently only mock-data has them)
 
 ## Priority 4: Social & Feed
 - [ ] Feed page (`/feed`) must read from real `donations` table joined with `profiles`

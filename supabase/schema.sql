@@ -13,11 +13,13 @@ CREATE TABLE IF NOT EXISTS profiles (
   city_region            TEXT,
   bio                    TEXT,
   username               TEXT UNIQUE,
-  giving_mode            TEXT DEFAULT 'intentional' CHECK (giving_mode IN ('intentional','budget')),
-  monthly_budget_cents   INT,
-  remainder_preference   TEXT DEFAULT 'rollover' CHECK (remainder_preference IN ('top_charity','split_even','rollover')),
-  member_since           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  giving_mode                TEXT DEFAULT 'intentional' CHECK (giving_mode IN ('intentional','budget')),
+  monthly_budget_cents       INT,
+  remainder_preference       TEXT DEFAULT 'rollover' CHECK (remainder_preference IN ('top_charity','split_even','rollover')),
+  stripe_customer_id         TEXT UNIQUE,
+  stripe_payment_method_id   TEXT,
+  member_since               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -128,3 +130,20 @@ CREATE TABLE IF NOT EXISTS feed_items (
 ALTER TABLE feed_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can read public feed" ON feed_items FOR SELECT USING (privacy_mode = 'PUBLIC');
 CREATE POLICY "Users can insert own feed items" ON feed_items FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- ─── Transactions (tap-to-give ledger) ────────────────────────────────────────
+-- One row per tap event; settled in batch at month-end via cron job.
+CREATE TABLE IF NOT EXISTS transactions (
+  id                        TEXT PRIMARY KEY DEFAULT ('txn_' || gen_random_uuid()::text),
+  user_id                   UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  charity_id                TEXT REFERENCES charities(id),
+  amount_cents              INT NOT NULL,
+  type                      TEXT NOT NULL DEFAULT 'tap' CHECK (type IN ('tap','card','bank')),
+  status                    TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','settled','failed','refunded')),
+  stripe_payment_intent_id  TEXT UNIQUE,
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can read own transactions"   ON transactions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own transactions" ON transactions FOR INSERT WITH CHECK (auth.uid() = user_id);

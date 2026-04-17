@@ -17,29 +17,52 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
   const [query, setQuery] = useState('');
   const [unclaimedName, setUnclaimedName] = useState('');
   const [unclaimedSite, setUnclaimedSite] = useState('');
+  const [unclaimedAmountStr, setUnclaimedAmountStr] = useState('');
+  const [submittingUnclaimed, setSubmittingUnclaimed] = useState(false);
   const [giftSent, setGiftSent] = useState(false);
   const [showUnclaimed, setShowUnclaimed] = useState(startUnclaimed);
+  const [charities, setCharities] = useState(CHARITIES);
 
   const results = query.length > 0
-    ? CHARITIES.filter(
+    ? charities.filter(
         (c) =>
           c.displayName.toLowerCase().includes(query.toLowerCase()) ||
           c.category.toLowerCase().includes(query.toLowerCase())
       )
-    : CHARITIES.slice(0, 8);
+    : charities.slice(0, 8);
 
+  // Fetch real charities from Supabase when modal opens
+  useEffect(() => {
+    if (!open) return;
+    fetch('/api/charities')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setCharities(data); });
+  }, [open]);
+
+  // Reset form state on close
   useEffect(() => {
     if (!open) {
       setQuery('');
       setUnclaimedName('');
       setUnclaimedSite('');
+      setUnclaimedAmountStr('');
       setGiftSent(false);
+      setSubmittingUnclaimed(false);
       setShowUnclaimed(startUnclaimed);
     }
   }, [open, startUnclaimed]);
 
-  function handleSendUnclaimed() {
+  async function handleSendUnclaimed() {
     if (!unclaimedName.trim()) return;
+    setSubmittingUnclaimed(true);
+    try {
+      await fetch('/api/charities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: unclaimedName.trim(), website: unclaimedSite.trim() }),
+      });
+    } catch {}
+    setSubmittingUnclaimed(false);
     setGiftSent(true);
   }
 
@@ -85,14 +108,7 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
           >
             {/* Drag handle */}
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 4,
-                  borderRadius: 999,
-                  background: 'var(--br2)',
-                }}
-              />
+              <div style={{ width: 36, height: 4, borderRadius: 999, background: 'var(--br2)' }} />
             </div>
 
             {/* Header */}
@@ -111,13 +127,9 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                 onClick={onClose}
                 aria-label="Close"
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  background: 'var(--sf2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'var(--sf2)', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
                 }}
               >
                 <X size={16} color="var(--tx2)" />
@@ -128,13 +140,9 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
             <div style={{ padding: '0 16px 8px' }}>
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  background: 'var(--sf2)',
-                  border: '1.5px solid var(--br)',
-                  borderRadius: 14,
-                  padding: '10px 14px',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  background: 'var(--sf2)', border: '1.5px solid var(--br)',
+                  borderRadius: 14, padding: '10px 14px',
                 }}
               >
                 <Search size={16} color="var(--tx3)" />
@@ -143,14 +151,7 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                   placeholder="Search charities..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  style={{
-                    flex: 1,
-                    border: 'none',
-                    background: 'transparent',
-                    outline: 'none',
-                    fontSize: 14,
-                    color: 'var(--tx)',
-                  }}
+                  style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 14, color: 'var(--tx)' }}
                   autoFocus
                 />
               </div>
@@ -174,26 +175,17 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                           onClick={() => onSelect(charity)}
                           className="tap-scale"
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 12,
-                            width: '100%',
-                            padding: '12px 0',
-                            borderBottom: '1px solid var(--br)',
-                            textAlign: 'left',
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            width: '100%', padding: '12px 0',
+                            borderBottom: '1px solid var(--br)', textAlign: 'left',
                           }}
                         >
                           <div
                             style={{
-                              width: 44,
-                              height: 44,
-                              borderRadius: 14,
-                              background: 'var(--gl)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 22,
-                              flexShrink: 0,
+                              width: 44, height: 44, borderRadius: 14,
+                              background: 'var(--gl)', display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                              fontSize: 22, flexShrink: 0,
                             }}
                           >
                             {charity.emoji}
@@ -213,26 +205,18 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                         </button>
                       ))}
 
-                      {/* Can't find them — link to unclaimed form */}
                       <button
                         onClick={() => setShowUnclaimed(true)}
                         style={{
-                          width: '100%',
-                          marginTop: 16,
-                          padding: '13px',
-                          borderRadius: 14,
-                          border: '1.5px dashed var(--br2)',
-                          background: 'transparent',
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: 'var(--tx2)',
+                          width: '100%', marginTop: 16, padding: '13px', borderRadius: 14,
+                          border: '1.5px dashed var(--br2)', background: 'transparent',
+                          fontSize: 14, fontWeight: 700, color: 'var(--tx2)',
                         }}
                       >
                         🔍 Can&apos;t find them? Send an unclaimed gift
                       </button>
                     </>
                   ) : (
-                    /* No results — go straight to unclaimed */
                     <div style={{ textAlign: 'center', padding: '24px 0 16px' }}>
                       <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--tx)', marginBottom: 6 }}>
                         🔍 Can&apos;t find them?
@@ -243,12 +227,8 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                       <button
                         onClick={() => setShowUnclaimed(true)}
                         style={{
-                          padding: '13px 28px',
-                          borderRadius: 14,
-                          background: 'var(--amber)',
-                          color: '#fff',
-                          fontSize: 15,
-                          fontWeight: 700,
+                          padding: '13px 28px', borderRadius: 14,
+                          background: 'var(--amber)', color: '#fff', fontSize: 15, fontWeight: 700,
                         }}
                       >
                         Send an unclaimed gift 📬
@@ -279,15 +259,20 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                             onChange={(e) => setUnclaimedName(e.target.value)}
                             autoFocus
                             style={{
-                              padding: '11px 14px',
-                              borderRadius: 12,
-                              border: '1.5px solid #F5D6A0',
-                              background: 'var(--sf)',
-                              fontSize: 14,
-                              color: 'var(--tx)',
-                              outline: 'none',
-                              width: '100%',
-                              boxSizing: 'border-box',
+                              padding: '11px 14px', borderRadius: 12, border: '1.5px solid #F5D6A0',
+                              background: 'var(--sf)', fontSize: 14, color: 'var(--tx)',
+                              outline: 'none', width: '100%', boxSizing: 'border-box',
+                            }}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Gift amount (optional, e.g. 25)"
+                            value={unclaimedAmountStr}
+                            onChange={(e) => setUnclaimedAmountStr(e.target.value)}
+                            style={{
+                              padding: '11px 14px', borderRadius: 12, border: '1.5px solid #F5D6A0',
+                              background: 'var(--sf)', fontSize: 14, color: 'var(--tx)',
+                              outline: 'none', width: '100%', boxSizing: 'border-box' as const,
                             }}
                           />
                           <input
@@ -296,32 +281,22 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                             value={unclaimedSite}
                             onChange={(e) => setUnclaimedSite(e.target.value)}
                             style={{
-                              padding: '11px 14px',
-                              borderRadius: 12,
-                              border: '1.5px solid #F5D6A0',
-                              background: 'var(--sf)',
-                              fontSize: 14,
-                              color: 'var(--tx)',
-                              outline: 'none',
-                              width: '100%',
-                              boxSizing: 'border-box',
+                              padding: '11px 14px', borderRadius: 12, border: '1.5px solid #F5D6A0',
+                              background: 'var(--sf)', fontSize: 14, color: 'var(--tx)',
+                              outline: 'none', width: '100%', boxSizing: 'border-box',
                             }}
                           />
                           <button
                             onClick={handleSendUnclaimed}
-                            disabled={!unclaimedName.trim()}
+                            disabled={!unclaimedName.trim() || submittingUnclaimed}
                             style={{
-                              padding: '13px',
-                              borderRadius: 14,
-                              background: unclaimedName.trim() ? 'var(--amber)' : 'var(--br2)',
-                              color: unclaimedName.trim() ? '#fff' : 'var(--tx3)',
-                              fontSize: 15,
-                              fontWeight: 700,
-                              width: '100%',
-                              transition: 'all 150ms',
+                              padding: '13px', borderRadius: 14, width: '100%', transition: 'all 150ms',
+                              background: unclaimedName.trim() && !submittingUnclaimed ? 'var(--amber)' : 'var(--br2)',
+                              color: unclaimedName.trim() && !submittingUnclaimed ? '#fff' : 'var(--tx3)',
+                              fontSize: 15, fontWeight: 700,
                             }}
                           >
-                            Send unclaimed gift 📬
+                            {submittingUnclaimed ? 'Sending…' : 'Send unclaimed gift 📬'}
                           </button>
                         </div>
                         <p style={{ fontSize: 11, color: '#CC7A10', marginTop: 10, lineHeight: 1.5 }}>
@@ -333,15 +308,9 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                         <button
                           onClick={() => setShowUnclaimed(false)}
                           style={{
-                            width: '100%',
-                            marginTop: 12,
-                            padding: '12px',
-                            borderRadius: 14,
-                            border: '1.5px solid var(--br)',
-                            background: 'transparent',
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: 'var(--tx3)',
+                            width: '100%', marginTop: 12, padding: '12px', borderRadius: 14,
+                            border: '1.5px solid var(--br)', background: 'transparent',
+                            fontSize: 14, fontWeight: 700, color: 'var(--tx3)',
                           }}
                         >
                           ← Back to search
@@ -363,14 +332,8 @@ export default function CharitySearchModal({ open, onClose, onSelect, startUncla
                       <button
                         onClick={onClose}
                         style={{
-                          marginTop: 14,
-                          padding: '12px 32px',
-                          borderRadius: 14,
-                          background: 'var(--green)',
-                          color: '#fff',
-                          fontSize: 15,
-                          fontWeight: 700,
-                          width: '100%',
+                          marginTop: 14, padding: '12px 32px', borderRadius: 14,
+                          background: 'var(--green)', color: '#fff', fontSize: 15, fontWeight: 700, width: '100%',
                         }}
                       >
                         Done 💚

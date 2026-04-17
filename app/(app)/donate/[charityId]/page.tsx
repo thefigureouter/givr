@@ -251,6 +251,42 @@ export default function DonatePage() {
         </div>
       </div>
 
+      {/* Charity detail */}
+      {charity.missionSummary && (
+        <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
+          <p style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.55, margin: '0 0 10px' }}>
+            {charity.missionSummary}
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {charity.taxDeductible && (
+              <span className="pill pg">🏛️ Tax-deductible</span>
+            )}
+            {charity.orgType === '501c3' && (
+              <span className="pill pgr">501(c)(3)</span>
+            )}
+            {charity.ein && (
+              <span
+                className="pill"
+                style={{ background: 'var(--bl)', color: 'var(--tx2)', fontSize: 11 }}
+              >
+                EIN {charity.ein}
+              </span>
+            )}
+            {charity.website && (
+              <a
+                href={charity.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="pill"
+                style={{ background: 'var(--sf2)', color: 'var(--tx3)', fontSize: 11, textDecoration: 'none' }}
+              >
+                🔗 Website
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
         {step === 'amount' && (
           <motion.div

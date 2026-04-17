@@ -22,7 +22,7 @@ function platformFee(amountCents: number): number {
 export async function createPaymentIntent(
   amountCents: number,
   charityId: string,
-  opts: { customerId?: string; paymentMethodId?: string; stripeAccountId?: string } = {}
+  opts: { customerId?: string; paymentMethodId?: string; stripeAccountId?: string; extraMetadata?: Record<string, string> } = {}
 ) {
   if (stripeConfigured) {
     const stripe = getStripe();
@@ -30,7 +30,7 @@ export async function createPaymentIntent(
     const params: Record<string, unknown> = {
       amount: amountCents,
       currency: 'usd',
-      metadata: { charityId },
+      metadata: { charityId, ...(opts.extraMetadata ?? {}) },
       automatic_payment_methods: { enabled: true },
     };
     if (opts.customerId) params.customer = opts.customerId;

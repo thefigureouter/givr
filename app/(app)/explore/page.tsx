@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import CharityCard from '@/components/charity/CharityCard';
 import CharitySearchModal from '@/components/charity/CharitySearchModal';
 import { CHARITIES } from '@/lib/mock-data';
-import type { CauseCategory } from '@/types';
+import type { CauseCategory, Charity } from '@/types';
 
 const FILTERS: { label: string; emoji: string; value: CauseCategory | 'all' }[] = [
   { label: 'All', emoji: '✨', value: 'all' },
@@ -26,8 +26,17 @@ export default function ExplorePage() {
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<CauseCategory | 'all'>('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [charities, setCharities] = useState<Charity[]>(CHARITIES);
+  const [loadingCharities, setLoadingCharities] = useState(true);
 
-  const filtered = CHARITIES.filter((c) => {
+  useEffect(() => {
+    fetch('/api/charities')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setCharities(data); })
+      .finally(() => setLoadingCharities(false));
+  }, []);
+
+  const filtered = charities.filter((c) => {
     const matchesFilter = activeFilter === 'all' || c.category === activeFilter;
     const matchesQuery =
       !query ||
@@ -119,7 +128,13 @@ export default function ExplorePage() {
         </div>
 
         {/* Results */}
-        {filtered.length === 0 ? (
+        {loadingCharities && charities === CHARITIES ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[0,1,2,3,4].map((i) => (
+              <div key={i} style={{ height: 72, borderRadius: 20, background: 'var(--sf)', border: '1.5px solid var(--br)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: `${i*0.08}s` }} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 0' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx2)' }}>
